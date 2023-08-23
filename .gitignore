@@ -1,0 +1,23 @@
+# folder
+__pycache__
+.ipynb_checkpoints
+.vscode
+logs*
+_experimental
+
+
+# file formats
+*.csv
+*.pt
+*.tmp
+*.out
+*.swp
+*.sh
+*.json
+
+# files
+demo*.ipynb
+
+# exceptions
+!benchmark_jarvis.sh
+!benchmark_matbench.sh
