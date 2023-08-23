@@ -36,7 +36,7 @@ This repository have integrated well-known models and databases, such as Jarvis-
 
 
 ### 🚀 Features
-- **Supported Models**: (list to be updated)
+- **Supported Models**: (more models will be added)
   - [SCHNET](https://arxiv.org/abs/1706.08566)
   - [CGCNN](https://arxiv.org/abs/1710.10324)
   - [ALIGNN](https://www.nature.com/articles/s41524-021-00650-1)
@@ -177,7 +177,8 @@ This results are stored in [`results/benchmark_jarvis`](results/benchmark_jarvis
 
 <br>
 
-### **2) Matbench Database**
+### **2) Matbench Database** (will be updated soon)
+
 | Task                  | SCHNET       | CGCNN       | ALIGNN      |
 |-----------------------|--------------|-------------|-------------|
 | matbench_log_gvrh     | - () | - ()| - ()|
