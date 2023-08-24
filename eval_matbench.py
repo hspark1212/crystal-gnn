@@ -38,20 +38,24 @@ def main(_config):
                 f"The target should be in {MB_TASKS}, Got {target} instead."
             )
 
-    # matbench benchmark
-    mb = MatbenchBenchmark(autoload=False)
+    def get_matbench_task_by_name(name):
+        for task in mb.tasks:
+            if task.dataset_name == name:
+                return task
+        raise ValueError(f"Can't find {name} in MatbenchBenchmark.")
 
-    for task in mb.tasks:
-        if task.dataset_name not in target_tasks:
-            continue
-        # set name with target
-        if task.metadata.task_type == "classification":
-            _config["num_classes"] = 2
-        else:
-            _config["num_classes"] = 1
+    for target_task in target_tasks:
+        mb = MatbenchBenchmark(autoload=False)
+        task = get_matbench_task_by_name(target_task)
+
         for fold in task.folds:
             # set datamodule
             dm = MatbenchDataModule(task, fold, _config)
+            # set num_classes
+            if task.metadata.task_type == "classification":
+                _config["num_classes"] = 2
+            else:
+                _config["num_classes"] = 1
             # set mean and std for Normalizer
             if _config["num_classes"] == 1:
                 _config["mean"] = dm.train_targets.mean()
