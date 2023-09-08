@@ -31,7 +31,7 @@ built on top of `PyTorch Lightning` and `Deep Graph Library (DGL)`
 
 Welcome to the world of **Crystal Graph Neural Networks (CGNN)**! This exciting field of research finds its applications in diverse areas, ranging from material science to chemistry. This repository has been created to serve as a comprehensive benchmarking framework tailored for CGNNs. It aims to facilitate the evaluation of CGNN performance, making it easier to assess their capabilities. 
 
-This repository have integrated well-known models and databases, such as Jarvis-Tools](https://pages.nist.gov/jarvis/databases/) and [Matbench](https://matbench.materialsproject.org/), making use of the power and flexibility of `PyTorch Lightning` and `DGL`.
+This repository have integrated well-known models and databases, such as [Jarvis-Tools](https://pages.nist.gov/jarvis/databases/) and [Matbench](https://matbench.materialsproject.org/), making use of the power and flexibility of `PyTorch Lightning` and `DGL`.
 
 
 
@@ -51,20 +51,35 @@ This repository have integrated well-known models and databases, such as Jarvis-
 
 ## 2. Installation
 
-### Step 1: Make Conda Environment with Python 3.9
+### **Method 1**: Reproducible Installation
+
+This method ensures a more reproducible setup by using a pre-defined environment.
+
+```bash
+git clone https://github.com/hspark1212/crystal-gnn.git
+cd crystal-gnn
+conda env create -f environment.yml
+```
+
+<br>
+
+### **Method 2**: Standard Installation
+
+This method is more flexible without strict dependencies.
+
+Step 1: Make Conda Environment with Python 3.9
 
 ```bash
 conda create -n crystal-gnn python=3.9
 conda activate crystal-gnn
 ```
 
-### Step 2: Clone the Repository & Install Dependencies
+Step 2: Clone the Repository & Install Dependencies
 ```bash
 git clone https://github.com/hspark1212/crystal-gnn.git
 cd crystal-gnn
 pip install -r requirements.txt
 ```
-
 ---
 
 <br>
@@ -177,17 +192,18 @@ This results are stored in [`results/benchmark_jarvis`](results/benchmark_jarvis
 
 <br>
 
-### **2) Matbench Database** (will be updated soon)
+### **2) Matbench Database** 
 
-| Task                  | SCHNET       | CGCNN       | ALIGNN      |
+| Task                  | SCHNET       | CGCNN       | ALIGNN  (will be updated soon)     |
 |-----------------------|--------------|-------------|-------------|
-| matbench_log_gvrh     | - () | - ()| - ()|
-| matbench_log_kvrh     | - () | - ()| - ()|
-| matbench_mp_e_form    | - () | - ()| - ()|
-| matbench_mp_gap       | - () | - ()| - ()|
-| matbench_perovskites  | - () | - ()| - ()|
-| matbench_phonons      | - () | - ()| - ()|
-| matbench_mp_is_metal  | [] | []| []|
+| matbench_log_gvrh     | 0.097 (0.84)| 0.090 (0.86)| |
+| matbench_log_kvrh     | 0.075 (0.87)| 0.068 (0.88)| |
+| matbench_mp_e_form    | 0.039 (-56.24)| 0.027 (-37.33)| |
+| matbench_mp_gap       | 0.287 (0.57)| 0.206 (0.86)| |
+| matbench_perovskites  | 0.051 (0.98)| 0.039 (0.99)| |
+| matbench_phonons      | 87.952 (0.81)| 65.544 (0.91)| |
+| matbench_mp_is_metal  | [0.898]| [0.899]| |
+* The results are computed using the average of five folds.
 
 > Note: Results are displayed as MAE (R2) for regression tasks and [Accuracy] for classification tasks.
 

@@ -286,4 +286,3 @@ dependencies:
     - wrapt==1.15.0
     - xmltodict==0.13.0
     - zipp==3.16.2
-prefix: /home/hspark8/anaconda3/envs/crystal_gnn
