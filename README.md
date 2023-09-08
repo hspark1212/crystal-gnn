@@ -3,7 +3,7 @@
 
 <h1> 🌐 Crystal Graph Neural Networks 💎 </h1>
 
-A banchmark framework for Crystal Graph Neural Networks (CGNN)
+A banchmarking framework for Crystal Graph Neural Networks (CGNN)
 
 built on top of `PyTorch Lightning` and `Deep Graph Library (DGL)`
 
