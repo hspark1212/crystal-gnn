@@ -1,6 +1,4 @@
 
----
-
 <div align="center">
 
 <h1> 🌐 Crystal Graph Neural Networks 💎 </h1>
@@ -46,6 +44,8 @@ This repository have integrated well-known models and databases, such as [Jarvis
   - [Matbench](https://matbench.materialsproject.org/)
 
 - **Performance Evaluation**: Post-benchmarking, model performances can be visualized and compared using Tensorboard.
+
+---
 
 <br>
 
