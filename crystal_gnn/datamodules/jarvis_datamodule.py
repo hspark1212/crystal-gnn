@@ -123,7 +123,7 @@ class JarvisDataModule(BaseDataModule):
             # make graph data
             graphs = self._make_graph_data(
                 atoms_list,
-                y=df[self.target].values,
+                target=df[self.target].values,
                 name=df[id_key].values,
                 train_mean=train_mean,
                 train_std=train_std,

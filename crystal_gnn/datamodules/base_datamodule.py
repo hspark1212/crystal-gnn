@@ -41,7 +41,7 @@ class BaseDataModule(LightningDataModule):
             source=self.source,
             target=self.target,
             split=split,
-            cutoff=self.cutoff,
+            database_name=self.database_name,
             **kwargs,  # fold, database_name
         )
 

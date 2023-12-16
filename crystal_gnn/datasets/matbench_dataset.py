@@ -1,9 +1,9 @@
-from typing import Dict, Any
+from typing import List
 from pathlib import Path
 
 import torch
 from torch.utils.data import Dataset
-from torch_geometric.data import Batch
+from torch_geometric.data import Data, Batch
 
 
 class MatbenchDataset(Dataset):
@@ -38,22 +38,9 @@ class MatbenchDataset(Dataset):
     def __len__(self) -> int:
         return len(self.graphs)
 
-    def __getitem__(self, index: int) -> Dict[str, Any]:
-        data = dict()
-        graph = self.graphs[index]
-        target = graph.y
-        data.update({"graph": graph, "target": target})
-
-        return data
+    def __getitem__(self, index: int) -> Data:
+        return self.graphs[index]
 
     @staticmethod
-    def collate_fn(batch: Dict[str, Any]) -> Dict[str, Any]:
-        """batch collate function"""
-        keys = set([key for b in batch for key in b.keys()])
-        dict_batch = {k: [dic[k] if k in dic else None for dic in batch] for k in keys}
-        # get batch graph
-        dict_batch["graph"] = Batch(dict_batch["graph"])
-        # get batch target
-        dict_batch["target"] = torch.tensor(dict_batch["target"])
-
-        return dict_batch
+    def collate_fn(batch: List[Data]) -> Batch:
+        return Batch.from_data_list(batch)

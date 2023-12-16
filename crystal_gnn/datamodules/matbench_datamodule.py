@@ -97,13 +97,13 @@ class MatbenchDataModule(BaseDataModule):
                 # make graph data
                 graph_data = self._make_graph_data(
                     atoms_list,
-                    y=targets,
+                    target=targets,
                     name=names,
                     train_mean=train_mean,
                     train_std=train_std,
                 )
                 # save graph
-                path_split = Path(path_target, f"{split}-{self.target}_fold{fold}.pt")
+                path_split = Path(path_target, f"{split}-{self.target}-fold{fold}.pt")
                 torch.save(graph_data, path_split)
 
             # save info
