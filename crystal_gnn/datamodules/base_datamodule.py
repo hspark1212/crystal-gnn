@@ -1,7 +1,13 @@
-from typing import Dict, Any
+from typing import Dict, Any, List, Iterable
+from tqdm import tqdm
 
-from dgl.data import DGLDataset
-from dgl.dataloading import GraphDataLoader
+from ase import Atoms
+from ase.neighborlist import neighbor_list
+
+import torch
+from torch.utils.data import Dataset
+from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader
 
 from pytorch_lightning import LightningDataModule
 
@@ -12,78 +18,115 @@ class BaseDataModule(LightningDataModule):
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
-        # configs for dataset
-        self.compute_line_graph = _config["compute_line_graph"]
-        self.neighbor_strategy = _config["neighbor_strategy"]
+        # configs for prepare_data
         self.cutoff = _config["cutoff"]
-        self.max_neighbors = _config["max_neighbors"]
-        self.use_canonize = _config["use_canonize"]
+
         # configs for dataloader
         self.batch_size = _config["batch_size"]
         self.num_workers = _config["num_workers"]
         self.pin_memory = _config["pin_memory"]
-        self.use_ddp = _config["use_ddp"]
 
     @property
-    def dataset_cls(self) -> DGLDataset:
+    def dataset_cls(self) -> Dataset:
         raise NotImplementedError
 
     @property
     def dataset_name(self) -> str:
         raise NotImplementedError
 
-    def _set_dataset(self, split: str) -> DGLDataset:
+    def _set_dataset(self, split: str, **kwargs) -> Dataset:
         print(f"Start setting {split} dataset...")
         return self.dataset_cls(
-            database_name=self.database_name,
+            data_dir=self.data_dir,
+            source=self.source,
             target=self.target,
             split=split,
-            compute_line_graph=self.compute_line_graph,
-            data_dir=self.data_dir,
-            neighbor_strategy=self.neighbor_strategy,
             cutoff=self.cutoff,
-            max_neighbors=self.max_neighbors,
-            use_canonize=self.use_canonize,
+            **kwargs,  # fold, database_name
         )
 
-    def setup(self, stage: str = None) -> None:
+    def setup(self, stage: str = None, **kwargs) -> None:
+        """
+        Args:
+            stage (str): fit, test, predict
+        kwargs:
+            - fold (int): fold number for Matbench
+            - database_name (str): database name for JARVIS
+        """
         # train
         if stage == "fit":
-            self.train_dataset = self._set_dataset(split="train")
-            self.val_dataset = self._set_dataset(split="val")
+            self.train_dataset = self._set_dataset(split="train", **kwargs)
+            self.val_dataset = self._set_dataset(split="val", **kwargs)
         # test
         elif stage == "test":
-            self.test_dataset = self._set_dataset(split="test")
+            self.test_dataset = self._set_dataset(split="test", **kwargs)
         # predict
         elif stage == "predict":
-            self.test_dataset = self._set_dataset(split="test")
+            self.test_dataset = self._set_dataset(split="test", **kwargs)
         else:
-            self.train_dataset = self._set_dataset(split="train")
-            self.val_dataset = self._set_dataset(split="val")
-            self.test_dataset = self._set_dataset(split="test")
+            self.train_dataset = self._set_dataset(split="train", **kwargs)
+            self.val_dataset = self._set_dataset(split="val", **kwargs)
+            self.test_dataset = self._set_dataset(split="test", **kwargs)
 
-    def _get_dataloader(
-        self, dataset: DGLDataset, shuffle: bool = False
-    ) -> GraphDataLoader:
-        return GraphDataLoader(
+    def _get_dataloader(self, dataset: Dataset, shuffle: bool = False) -> DataLoader:
+        return DataLoader(
             dataset,
             batch_size=self.batch_size,
             shuffle=shuffle,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             collate_fn=self.dataset_cls.collate_fn,
-            use_ddp=self.use_ddp,
             drop_last=False,
         )
 
-    def train_dataloader(self) -> GraphDataLoader:
+    def train_dataloader(self) -> DataLoader:
         return self._get_dataloader(self.train_dataset, shuffle=True)
 
-    def val_dataloader(self) -> GraphDataLoader:
+    def val_dataloader(self) -> DataLoader:
         return self._get_dataloader(self.val_dataset, shuffle=False)
 
-    def test_dataloader(self) -> GraphDataLoader:
+    def test_dataloader(self) -> DataLoader:
         return self._get_dataloader(self.test_dataset, shuffle=False)
 
-    def predict_dataloader(self) -> GraphDataLoader:
+    def predict_dataloader(self) -> DataLoader:
         return self._get_dataloader(self.test_dataset)
+
+    def _make_graph_data(self, atoms_list: List[Atoms], **kwargs) -> List[Data]:
+        """Make list of torch_geometric.data.Data from list of ASE.Atoms."""
+        graphs = []
+        for i, atoms in enumerate(tqdm(atoms_list)):
+            edge_src, edge_dst, edge_shift = neighbor_list(
+                "ijS",
+                a=atoms,
+                cutoff=self.cutoff,
+                self_interaction=False,  # TODO: check self_interaction
+            )
+            pos = torch.tensor(atoms.get_positions())
+            lattice = torch.tensor(atoms.cell.array).unsqueeze(0)
+            edge_shift = torch.tensor(edge_shift, dtype=float)
+            relative_vec = (
+                pos[edge_dst]
+                - pos[edge_src]
+                + torch.einsum("ni,nij->nj", edge_shift, lattice)
+            )
+            graph_data = {
+                "pos": pos,
+                "lattice": lattice,
+                "x": torch.tensor(atoms.get_atomic_numbers()),
+                "edge_index": torch.stack(
+                    [torch.LongTensor(edge_src), torch.LongTensor(edge_dst)], dim=0
+                ),
+                "edge_shift": edge_shift,
+                "relative_vec": relative_vec,
+            }
+            # add kwargs
+            for k, v in kwargs.items():
+                if isinstance(v, Iterable):
+                    graph_data[k] = v[i]
+                else:
+                    graph_data[k] = v
+
+            graph = Data(**graph_data)
+
+            graphs.append(graph)
+        return graphs

@@ -12,30 +12,22 @@ def config():
     seed = 0
     test_only = False
 
-    # prepare_data
-    source = "jarvis"
-    database_name = "dft_3d_2021"
+    # prepare_data # TODO: check unnecessary
+    source = "jarvis"  # "matbench"
+    database_name = "dft_3d_2021"  # (Optional) for JARVIS
     target = "formation_energy_peratom"
-    data_dir = "./crystal_gnn/data"
+    data_dir = "./data/"
     classification_threshold = None
     split_seed = 123
     train_ratio = 0.8
     val_ratio = 0.1
     test_ratio = 0.1
-    keep_data_order = False
-
-    # dataset
-    compute_line_graph = True
-    neighbor_strategy = "k-nearest"
-    cutoff = 8.0
-    max_neighbors = 12
-    use_canonize = True
+    cutoff = 5.0
 
     # dataloader
     batch_size = 64
-    num_workers = 0  # This should be 0 to use dataloader with dgl graph
+    num_workers = 0
     pin_memory = True
-    use_ddp = True
 
     # model
     model_name = "cgcnn"  # "schnet", "cgcnn", "alignn"

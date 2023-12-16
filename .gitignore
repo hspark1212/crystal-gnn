@@ -5,6 +5,10 @@ __pycache__
 logs*
 tmp*
 _experimental
+examples
+deprecated*
+GNoME
+data/
 
 
 # file formats

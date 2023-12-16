@@ -1,144 +1,136 @@
-from typing import Dict, List, Any
+from typing import Dict, Any
+from pathlib import Path
+import json
 
-from pymatgen.core import Structure
-
-from matbench.task import MatbenchTask
+from ase import Atoms
 
 import torch
-from dgl.data import DGLDataset
-from dgl.dataloading import GraphDataLoader
+from torch_geometric.data import Dataset
 
+from matbench import MatbenchBenchmark
 
 from crystal_gnn.datasets.matbench_dataset import MatbenchDataset
 from crystal_gnn.datamodules.base_datamodule import BaseDataModule
 
 
 class MatbenchDataModule(BaseDataModule):
-    def __init__(self, task: MatbenchTask, fold: int, _config: Dict[str, Any]) -> None:
+    def __init__(self, _config: Dict[str, Any]) -> None:
         super().__init__(_config)
-        self.train_dataset = None
-        self.val_dataset = None
-        self.test_dataset = None
-        self.task = task
-        self.fold = fold
+
+        self.source = _config["source"]
+        self.target = _config["target"]  # task
+        self.data_dir = _config["data_dir"]
+        self.split_seed = _config["split_seed"]
         self.train_ratio = _config["train_ratio"]
         self.val_ratio = _config["val_ratio"]
         self.test_ratio = _config["test_ratio"]
-        # load data
-        self.task.load()
-        # get train and val data
-        inputs, outputs = self.task.get_train_and_val_data(self.fold)
-        # split train and val data
-        randperm = torch.randperm(len(inputs)).tolist()
-        num_train = int(len(inputs) * self.train_ratio)
-        train_inputs = inputs[randperm[:num_train]]
-        train_outputs = outputs[randperm[:num_train]]
-        val_inputs = inputs[randperm[num_train:]]
-        val_outputs = outputs[randperm[num_train:]]
-        # make train data
-        self.train_names = list(train_inputs.keys())
-        self.train_structures = list(train_inputs.values)
-        self.train_targets = torch.Tensor(list(train_outputs.values))
-        # make val data
-        self.val_names = list(val_inputs.keys())
-        self.val_structures = list(val_inputs.values)
-        self.val_targets = torch.Tensor(list(val_outputs.values))
-        # get test data
-        test_inputs, test_outputs = self.task.get_test_data(
-            self.fold, include_target=True
-        )
-        # make test data
-        self.test_names = list(test_inputs.keys())
-        self.test_structures = list(test_inputs.values)
-        self.test_targets = torch.Tensor(list(test_outputs.values))
+        self.database_name = None  # this is not used for Matbench
+
+    def prepare_data(self) -> None:
+        """Download data from MATBENCH and split into train, val, test.
+
+        It will save the torch_geometric graph data for train, val, test
+        in the `{data_dir}/{source}/{target}` with the following names:
+        - train-{target}_fold{fold}.pt
+        - val-{target}_fold{fold}.pt
+        - test-{target}_fold{fold}.pt
+        - {target}_fold{fold}.json (info files)
+        """
+        # make path_target if not exists
+        path_target = Path(self.data_dir, self.source, self.target)
+        if not path_target.exists():
+            path_target.mkdir(parents=True, exist_ok=True)
+
+        # load matbench data
+        mb = MatbenchBenchmark(autoload=False, subset=[self.target])
+        mb.load()
+        task = list(mb.tasks)[0]
+
+        for fold in task.folds:
+            # check if the prepared data already exists
+            path_train = Path(path_target, f"train-{self.target}-fold{fold}.pt")
+            path_val = Path(path_target, f"val-{self.target}-fold{fold}.pt")
+            path_test = Path(path_target, f"test-{self.target}-fold{fold}.pt")
+            path_info = Path(path_target, f"{self.target}-fold{fold}.pt")
+            if (
+                path_train.exists()
+                and path_val.exists()
+                and path_test.exists()
+                and path_info.exists()
+            ):
+                print(f"load graph data from {path_target} for fold {fold}")
+                continue
+
+            inputs, outputs = task.get_train_and_val_data(fold)
+            # split train and val data
+            randperm = torch.randperm(len(inputs)).tolist()
+            num_train = int(len(inputs) * self.train_ratio)
+            train_inputs = inputs[randperm[:num_train]]
+            train_outputs = outputs[randperm[:num_train]]
+            val_inputs = inputs[randperm[num_train:]]
+            val_outputs = outputs[randperm[num_train:]]
+            # make train data
+            train_names, train_structures = zip(*train_inputs.items())
+            train_targets = train_outputs.values
+            # make val data
+            val_names, val_structures = zip(*val_inputs.items())
+            val_targets = val_outputs.values
+            # get test data
+            test_inputs, test_outputs = task.get_test_data(fold, include_target=True)
+            # make test data
+            test_names, test_structures = zip(*test_inputs.items())
+            test_targets = test_outputs.values
+
+            # save graph data for train, val, test
+            for split, names, structures, targets in zip(
+                ["train", "val", "test"],
+                [train_names, val_names, test_names],
+                [train_structures, val_structures, test_structures],
+                [train_targets, val_targets, test_targets],
+            ):
+                # convert Structure to ase Atoms
+                atoms_list = [self.convert_to_ase_atoms(s) for s in structures]
+                if split == "train":
+                    train_mean = targets.mean()
+                    train_std = targets.std()
+
+                # make graph data
+                graph_data = self._make_graph_data(
+                    atoms_list,
+                    y=targets,
+                    name=names,
+                    train_mean=train_mean,
+                    train_std=train_std,
+                )
+                # save graph
+                path_split = Path(path_target, f"{split}-{self.target}_fold{fold}.pt")
+                torch.save(graph_data, path_split)
+
+            # save info
+            info = {
+                "total": len(train_names) + len(val_names) + len(test_names),
+                "train": len(train_names),
+                "val": len(val_names),
+                "test": len(test_names),
+                "train_mean": train_mean,
+                "train_std": train_std,
+            }
+            json.dump(info, open(path_info, "w"))
+            print(info)
 
     @property
-    def dataset_cls(self) -> DGLDataset:
+    def dataset_cls(self) -> Dataset:
         return MatbenchDataset
 
     @property
     def dataset_name(self) -> str:
         return "matbench"
 
-    def _set_dataset(
-        self,
-        names: List[str],
-        structures: List[Structure],
-        targets: List[Any],
-        split: str,
-    ) -> DGLDataset:
-        print(f"Start setting {split} dataset...")
-        return MatbenchDataset(
-            names=names,
-            structures=structures,
-            targets=targets,
-            split=split,
-            compute_line_graph=self.compute_line_graph,
-            neighbor_strategy=self.neighbor_strategy,
-            cutoff=self.cutoff,
-            max_neighbors=self.max_neighbors,
-            use_canonize=self.use_canonize,
+    @classmethod
+    def convert_to_ase_atoms(cls, structure) -> Atoms:
+        return Atoms(
+            numbers=structure.atomic_numbers,
+            positions=structure.cart_coords,
+            cell=structure.lattice.matrix,
+            pbc=True,
         )
-
-    def setup(self, stage: str = None) -> None:
-        # train
-        if stage == "fit" or stage is None:
-            self.train_dataset = self._set_dataset(
-                names=self.train_names,
-                structures=self.train_structures,
-                targets=self.train_targets,
-                split="train",
-            )
-            self.val_dataset = self._set_dataset(
-                names=self.val_names,
-                structures=self.val_structures,
-                targets=self.val_targets,
-                split="val",
-            )
-        # test
-        elif stage == "test":
-            self.test_dataset = self._set_dataset(
-                names=self.test_names,
-                structures=self.test_structures,
-                targets=self.test_targets,
-                split="test",
-            )
-        # predict
-        elif stage == "predict":
-            self.test_dataset = self._set_dataset(
-                names=self.test_names,
-                structures=self.test_structures,
-                targets=self.test_targets,
-                split="test",
-            )
-            self.use_ddp = False  # pylint: disable=attribute-defined-outside-init
-        else:
-            raise ValueError(f"Invalid stage: {stage}")
-
-    def _set_dataloader(
-        self,
-        dataset: DGLDataset,
-        shuffle: bool,
-    ) -> GraphDataLoader:
-        return GraphDataLoader(
-            dataset,
-            shuffle=shuffle,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            collate_fn=dataset.collate_fn,
-            use_ddp=self.use_ddp,
-            drop_last=False,
-        )
-
-    def train_dataloader(self) -> GraphDataLoader:
-        return self._set_dataloader(self.train_dataset, shuffle=True)
-
-    def val_dataloader(self) -> GraphDataLoader:
-        return self._set_dataloader(self.val_dataset, shuffle=False)
-
-    def test_dataloader(self) -> GraphDataLoader:
-        return self._set_dataloader(self.test_dataset, shuffle=False)
-
-    def predict_dataloader(self) -> GraphDataLoader:
-        return self._set_dataloader(self.test_dataset, shuffle=False)

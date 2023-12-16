@@ -5,7 +5,7 @@ import copy
 
 import torch
 import pytorch_lightning as pl
-from matbench.bench import MatbenchBenchmark
+from matbench import MatbenchBenchmark
 
 from crystal_gnn.config import ex
 from crystal_gnn.models import _models
