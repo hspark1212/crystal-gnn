@@ -32,9 +32,8 @@ def config():
     # model
     model_name = "cgcnn"  # "schnet", "cgcnn", "alignn"
     num_conv = 4
-    hidden_dim = 256
-    rbf_distance_dim = 80  # RDF expansion dimension for edge distance
-    rbf_triplet_dim = 40  # RDF expansion dimension for triplet angle
+    hidden_dim = 128
+    rbf_distance_dim = 50  # edge feature dimension
     batch_norm = True
     residual = True
     dropout = 0.0

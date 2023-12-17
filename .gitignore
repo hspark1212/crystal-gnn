@@ -4,6 +4,7 @@ __pycache__
 .vscode
 logs*
 tmp*
+old*
 _experimental
 examples
 deprecated*

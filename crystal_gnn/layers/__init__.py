@@ -1,3 +1,4 @@
+"""
 from crystal_gnn.layers.cgcnn_layer import CGCNNLayer
 from crystal_gnn.layers.alignn_layer import ALIGNNLayer
 from crystal_gnn.layers.schnet_layer import SCHNETLayer
@@ -11,3 +12,4 @@ __all__ = [
     "GatedGCNLayer",
     "MLPReadout",
 ]
+"""

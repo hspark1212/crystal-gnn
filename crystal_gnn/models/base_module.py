@@ -1,16 +1,15 @@
 from abc import ABCMeta, abstractmethod
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+from torch_geometric.data import Data, Batch
 from pytorch_lightning import LightningModule
 from torchmetrics.classification import Accuracy
 from torchmetrics.regression import MeanAbsoluteError, R2Score
 from transformers import get_constant_schedule_with_warmup
-
-from crystal_gnn.models.module_utils import Normalizer
 
 
 class BaseModule(LightningModule, metaclass=ABCMeta):
@@ -30,28 +29,26 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
         self.lr = _config["lr"]
         self.weight_decay = _config["weight_decay"]
         self.scheduler = _config["scheduler"]
-        # normalizer (only when num_classes == 1)
-        if self.num_classes == 1:
-            print(f"set normalizer with mean: {_config['mean']}, std: {_config['std']}")
-            self.normalizer = Normalizer(mean=_config["mean"], std=_config["std"])
 
     @abstractmethod
-    def forward(self, batch: Dict[str, Any]) -> torch.Tensor:
-        pass
+    def forward(self, data: Union[Data, Batch]) -> torch.Tensor:
+        raise NotImplementedError
 
     def training_step(
         self,
-        batch: Dict[str, Any],
+        batch: Union[Data, Batch],
         batch_idx: int,  # pylint: disable=unused-argument
     ) -> torch.Tensor:
         logits = self.forward(batch)
         target = batch["target"]
+        train_mean = float(batch["train_mean"] if "train_mean" in batch else 0)
+        train_std = float(batch["train_std"] if "train_std" in batch else 1)
         if self.num_classes == 1:
-            target = self.normalizer.encode(target)
+            target = (target - train_mean) / train_std  # encode
         loss = self._calculate_loss(logits, target)
         if self.num_classes == 1:
-            logits = self.normalizer.decode(logits)
-            target = self.normalizer.decode(target)
+            logits = (logits * train_std) + train_mean  # decode
+            target = (target * train_std) + train_mean  # decode
         self._log_metrics(
             logits,
             target,
@@ -64,17 +61,19 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
 
     def validation_step(
         self,
-        batch: Dict[str, Any],
+        batch: Union[Data, Batch],
         batch_idx: int,  # pylint: disable=unused-argument
     ) -> torch.Tensor:
         logits = self.forward(batch)
         target = batch["target"]
+        train_mean = float(batch["train_mean"] if "train_mean" in batch else 0)
+        train_std = float(batch["train_std"] if "train_std" in batch else 1)
         if self.num_classes == 1:
-            target = self.normalizer.encode(target)
+            target = (target - train_mean) / train_std  # encode
         loss = self._calculate_loss(logits, target)
         if self.num_classes == 1:
-            logits = self.normalizer.decode(logits)
-            target = self.normalizer.decode(target)
+            logits = (logits * train_std) + train_mean  # decode
+            target = (target * train_std) + train_mean  # decode
         self._log_metrics(
             logits,
             target,
@@ -87,17 +86,19 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
 
     def test_step(
         self,
-        batch: Dict[str, Any],
+        batch: Union[Data, Batch],
         batch_idx,  # pylint: disable=unused-argument
     ) -> torch.Tensor:
         logits = self.forward(batch)
         target = batch["target"]
+        train_mean = float(batch["train_mean"] if "train_mean" in batch else 0)
+        train_std = float(batch["train_std"] if "train_std" in batch else 1)
         if self.num_classes == 1:
-            target = self.normalizer.encode(target)
+            target = (target - train_mean) / train_std  # encode
         loss = self._calculate_loss(logits, target)
         if self.num_classes == 1:
-            logits = self.normalizer.decode(logits)
-            target = self.normalizer.decode(target)
+            logits = (logits * train_std) + train_mean  # decode
+            target = (target * train_std) + train_mean  # decode
         self._log_metrics(
             logits,
             target,
@@ -110,7 +111,7 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
 
     def predict_step(
         self,
-        batch: Dict[str, Any],
+        batch: Union[Data, Batch],
         batch_idx,  # pylint: disable=unused-argument
     ) -> torch.Tensor:
         logits = self.forward(batch)
@@ -127,6 +128,7 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
     def configure_optimizers(self) -> Dict[str, Any]:
         return self._set_configure_optimizers()
 
+    # TODO: deprecated
     def _init_weights(self, module: torch.nn.Module) -> None:
         if isinstance(module, nn.Linear):
             module.weight.data.normal_(mean=0.0, std=0.02)
@@ -239,6 +241,8 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer, mode="min"
             )
+        elif self.scheduler == "linear_decay":
+            scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, max_steps)
         elif self.scheduler == "constant_with_warmup":
             warmup_step = int(max_steps * 0.05)
             scheduler = get_constant_schedule_with_warmup(

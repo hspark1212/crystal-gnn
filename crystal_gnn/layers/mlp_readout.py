@@ -5,6 +5,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+NONLINEARITIES = {
+    "relu": F.relu,
+    "tanh": torch.tanh,
+    "sigmoid": torch.sigmoid,
+    "leaky_relu": F.leaky_relu,
+    "silu": F.silu,
+}
+
+
 class MLPReadout(nn.Module):
     """
     Readout function.
@@ -15,6 +24,7 @@ class MLPReadout(nn.Module):
         input_dim: int,
         output_dim: int,
         L: int = 2,
+        nonlinearity: str = "silu",
     ):  # L=nb_hidden_layers
         super().__init__()
         list_FC_layers = [
@@ -24,11 +34,12 @@ class MLPReadout(nn.Module):
         list_FC_layers.append(nn.Linear(input_dim // 2**L, output_dim, bias=True))
         self.FC_layers = nn.ModuleList(list_FC_layers)
         self.L = L
+        self.nonlinearity = NONLINEARITIES[nonlinearity]
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         y = x
         for l in range(self.L):
-            y = self.FC_layers[l](y)
-            y = F.relu(y)
-        y = self.FC_layers[self.L](y)
+            y = self.FC_layers[l](y)  # [B, H/2**l]
+            y = self.nonlinearities(y)
+        y = self.FC_layers[self.L](y)  # [B, O]
         return y
