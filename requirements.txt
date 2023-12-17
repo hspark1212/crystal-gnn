@@ -1,17 +1,14 @@
 torch>=2.0.0
 pytorch-lightning>=2.0.0
-dgl
-torchmetrics
 sacred
 tensorboard
 jarvis-tools
 pymatgen
 pandas
 jupyterlab
-pylint
 fire
-botocore
 transformers
+wandb
 # torch and pytorch-lightning
 # pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118
 # pip install lightning==2.1.0

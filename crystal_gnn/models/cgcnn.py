@@ -115,7 +115,7 @@ class CGCNN(BaseModule):
             ]
         )
         self.avg_pool = global_mean_pool
-        self.lin = nn.Linear(self.hidden_dim, self.hidden_dim)
+        self.lin = nn.Linear(self.hidden_dim, self.hidden_dim, bias=False)
         self.readout = MLPReadout(self.hidden_dim, self.readout_dim)
 
     def reset_parameters(self) -> None:

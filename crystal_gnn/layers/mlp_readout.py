@@ -24,14 +24,15 @@ class MLPReadout(nn.Module):
         input_dim: int,
         output_dim: int,
         L: int = 2,
+        bias: bool = False,
         nonlinearity: str = "silu",
     ):  # L=nb_hidden_layers
         super().__init__()
         list_FC_layers = [
-            nn.Linear(input_dim // 2**l, input_dim // 2 ** (l + 1), bias=True)
+            nn.Linear(input_dim // 2**l, input_dim // 2 ** (l + 1), bias=bias)
             for l in range(L)
         ]
-        list_FC_layers.append(nn.Linear(input_dim // 2**L, output_dim, bias=True))
+        list_FC_layers.append(nn.Linear(input_dim // 2**L, output_dim, bias=bias))
         self.FC_layers = nn.ModuleList(list_FC_layers)
         self.L = L
         self.nonlinearity = NONLINEARITIES[nonlinearity]
@@ -40,6 +41,6 @@ class MLPReadout(nn.Module):
         y = x
         for l in range(self.L):
             y = self.FC_layers[l](y)  # [B, H/2**l]
-            y = self.nonlinearities(y)
+            y = self.nonlinearity(y)
         y = self.FC_layers[self.L](y)  # [B, O]
         return y

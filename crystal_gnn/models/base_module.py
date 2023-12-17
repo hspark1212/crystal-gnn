@@ -39,16 +39,22 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
         batch: Union[Data, Batch],
         batch_idx: int,  # pylint: disable=unused-argument
     ) -> torch.Tensor:
+        # get logits
         logits = self.forward(batch)
-        target = batch["target"]
-        train_mean = float(batch["train_mean"] if "train_mean" in batch else 0)
-        train_std = float(batch["train_std"] if "train_std" in batch else 1)
+        logits = logits.squeeze()
+        # get target
+        target = batch["target"].to(logits.dtype)
+        # get train_mean and train_std
+        train_mean = float(batch["train_mean"][0] if "train_mean" in batch else 0)
+        train_std = float(batch["train_std"][0] if "train_std" in batch else 1)
+        # calculate loss
         if self.num_classes == 1:
             target = (target - train_mean) / train_std  # encode
         loss = self._calculate_loss(logits, target)
         if self.num_classes == 1:
             logits = (logits * train_std) + train_mean  # decode
             target = (target * train_std) + train_mean  # decode
+        # log metrics
         self._log_metrics(
             logits,
             target,
@@ -64,16 +70,22 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
         batch: Union[Data, Batch],
         batch_idx: int,  # pylint: disable=unused-argument
     ) -> torch.Tensor:
+        # get logits
         logits = self.forward(batch)
-        target = batch["target"]
-        train_mean = float(batch["train_mean"] if "train_mean" in batch else 0)
-        train_std = float(batch["train_std"] if "train_std" in batch else 1)
+        logits = logits.squeeze()
+        # get target
+        target = batch["target"].to(logits.dtype)
+        # get train_mean and train_std
+        train_mean = float(batch["train_mean"][0] if "train_mean" in batch else 0)
+        train_std = float(batch["train_std"][0] if "train_std" in batch else 1)
+        # calculate loss
         if self.num_classes == 1:
             target = (target - train_mean) / train_std  # encode
         loss = self._calculate_loss(logits, target)
         if self.num_classes == 1:
             logits = (logits * train_std) + train_mean  # decode
             target = (target * train_std) + train_mean  # decode
+        # log metrics
         self._log_metrics(
             logits,
             target,
@@ -89,16 +101,22 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
         batch: Union[Data, Batch],
         batch_idx,  # pylint: disable=unused-argument
     ) -> torch.Tensor:
+        # get logits
         logits = self.forward(batch)
-        target = batch["target"]
-        train_mean = float(batch["train_mean"] if "train_mean" in batch else 0)
-        train_std = float(batch["train_std"] if "train_std" in batch else 1)
+        logits = logits.squeeze()
+        # get target
+        target = batch["target"].to(logits.dtype)
+        # get train_mean and train_std
+        train_mean = float(batch["train_mean"][0] if "train_mean" in batch else 0)
+        train_std = float(batch["train_std"][0] if "train_std" in batch else 1)
+        # calculate loss
         if self.num_classes == 1:
             target = (target - train_mean) / train_std  # encode
         loss = self._calculate_loss(logits, target)
         if self.num_classes == 1:
             logits = (logits * train_std) + train_mean  # decode
             target = (target * train_std) + train_mean  # decode
+        # log metrics
         self._log_metrics(
             logits,
             target,
@@ -115,6 +133,7 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
         batch_idx,  # pylint: disable=unused-argument
     ) -> torch.Tensor:
         logits = self.forward(batch)
+        logits = logits.squeeze()
         if self.num_classes == 1:
             logits = self.normalizer.decode(logits)
         elif self.num_classes == 2:
@@ -146,9 +165,9 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
         self, logits: torch.Tensor, target: torch.Tensor
     ) -> torch.Tensor:
         if self.num_classes == 1:
-            loss = F.mse_loss(logits.squeeze(), target)
+            loss = F.mse_loss(logits, target)
         elif self.num_classes == 2:
-            loss = F.binary_cross_entropy_with_logits(logits.squeeze(), target)
+            loss = F.binary_cross_entropy_with_logits(logits, target)
             # the bce includes a sigmoid fuction
         else:
             loss = F.cross_entropy(logits, target)

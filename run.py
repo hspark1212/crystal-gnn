@@ -1,6 +1,8 @@
 import copy
 
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
 from crystal_gnn.config import ex
 from crystal_gnn.datamodules import _datamodules
@@ -20,19 +22,20 @@ def main(_config):
     model = _models[_config["model_name"]](_config)
     print(model)
     # set checkpoint callback
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(
+    checkpoint_callback = ModelCheckpoint(
         save_top_k=1,
         verbose=True,
         monitor="val/loss",
         mode="min",
         filename="best-{epoch}",
     )
-    lr_callback = pl.callbacks.LearningRateMonitor(logging_interval="step")
+    lr_callback = LearningRateMonitor(logging_interval="step")
     callbacks = [checkpoint_callback, lr_callback]
     # set logger
-    logger = pl.loggers.TensorBoardLogger(
-        _config["log_dir"],
+    logger = WandbLogger(
         name=f"{exp_name}",
+        save_dir=_config["log_dir"],
+        project="crystal_gnn",
     )
     # set trainer
     trainer = pl.Trainer(

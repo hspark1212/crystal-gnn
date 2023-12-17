@@ -12,7 +12,7 @@ def config():
     seed = 0
     test_only = False
 
-    # prepare_data # TODO: check unnecessary
+    # prepare_data
     source = "jarvis"  # "matbench"
     database_name = "dft_3d_2021"  # (Optional) for JARVIS
     target = "formation_energy_peratom"
@@ -39,10 +39,6 @@ def config():
     dropout = 0.0
     num_classes = 1  # if higher than 1, classification mode is activated
 
-    # normalizer (only when num_classes == 1)
-    mean = None  # when mean is None, it will be calculated from train data
-    std = None  # when std is None, it will be calculated from train data
-
     # optimizer
     optimizer = "adamw"  # "adma", "sgd", "adamw"
     lr = 1e-3  # learning rate
@@ -52,7 +48,7 @@ def config():
     # training
     devices = 1  # number of GPUs to use
     accelerator = "gpu"  # "cpu", "gpu"
-    max_epochs = 150
+    max_epochs = 200
     deterministic = True  # set True for reproducibility
     log_dir = "./crystal_gnn/logs"
     load_path = ""  # to load pretrained model
@@ -78,27 +74,3 @@ def cgcnn():
 def alignn():
     exp_name = "alignn"
     model_name = "alignn"
-
-
-############
-# matbench #
-############
-@ex.named_config
-def matbench_schnet():
-    exp_name = "schnet"
-    model_name = "schnet"
-    log_dir = "./crystal_gnn/logs/matbench"
-
-
-@ex.named_config
-def matbench_cgcnn():
-    exp_name = "cgcnn"
-    model_name = "cgcnn"
-    log_dir = "./crystal_gnn/logs/matbench"
-
-
-@ex.named_config
-def matbench_alignn():
-    exp_name = "alignn"
-    model_name = "alignn"
-    log_dir = "./crystal_gnn/logs/matbench"

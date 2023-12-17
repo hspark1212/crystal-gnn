@@ -103,7 +103,7 @@ class BaseDataModule(LightningDataModule):
             )
             pos = torch.tensor(atoms.get_positions())
             lattice = torch.tensor(atoms.cell.array).unsqueeze(0)
-            edge_shift = torch.tensor(edge_shift, dtype=float)
+            edge_shift = torch.tensor(edge_shift)
             relative_vec = (
                 pos[edge_dst]
                 - pos[edge_src]
