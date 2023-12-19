@@ -76,3 +76,9 @@ def megnet():
     model_name = "megnet"
     num_conv = 3
     hidden_dim = 64
+
+
+@ex.named_config
+def alignn():
+    exp_name = "alignn"
+    model_name = "alignn"
