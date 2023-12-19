@@ -98,13 +98,14 @@ class GatedGCNLayer(MessagePassing):
         return sigma_h, sigma, e, index
 
     def update(self, aggr_out: Tensor, Ah: Tensor) -> Tensor:
-        # sum_sigma_h, sum_sigma, out_e = aggr_out
-        sigma_h, sigma, out_e, index = aggr_out
+        sigma_h, sigma, out_e, index = aggr_out  # [B_e, H], [B_e, H], [B_e, H], [B_e]
+        # aggregate
         sum_sigma_h = scatter(
             sigma_h, index, dim=0, dim_size=Ah.size(0), reduce="sum"
         )  # [B_n, H]
         sum_sigma = scatter(
             sigma, index, dim=0, dim_size=Ah.size(0), reduce="sum"
         )  # [B_n, H]
+        # update
         out_h = Ah + sum_sigma_h / (sum_sigma + 1e-6)  # [B_n, H]
         return out_h, out_e
