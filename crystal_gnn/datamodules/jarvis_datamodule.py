@@ -106,7 +106,7 @@ class JarvisDataModule(BaseDataModule):
             train_ratio=self.train_ratio,
             val_ratio=self.val_ratio,
             test_ratio=self.test_ratio,
-            keep_data_order=True,
+            keep_data_order=False,  # It should be False
         )
 
         # save graph data for train, val, test

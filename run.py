@@ -33,9 +33,12 @@ def main(_config):
     callbacks = [checkpoint_callback, lr_callback]
     # set logger
     logger = WandbLogger(
-        name=f"{exp_name}",
-        save_dir=_config["log_dir"],
         project="crystal_gnn",
+        name=f"{exp_name}",
+        # version=f"{exp_name}" if not _config["test_only"] else None, # TODO: check if needed
+        save_dir=_config["log_dir"],
+        log_model=True,
+        group=f"{_config['source']}-{_config['model_name']}-{_config['target']}",
     )
     # set trainer
     trainer = pl.Trainer(
@@ -51,6 +54,5 @@ def main(_config):
         trainer.fit(model, dm, ckpt_path=_config["resume_from"])
         trainer.test(model, datamodule=dm, ckpt_path="best")
     else:
-        model.load_from_checkpoint(_config["load_path"])
         print(f"load model from {_config['load_path']}")
-        trainer.test(model, datamodule=dm)
+        trainer.test(model, datamodule=dm, ckpt_path=_config["load_path"])

@@ -3,6 +3,7 @@ from typing import Optional
 import numpy as np
 import torch
 from torch import nn
+from torch import Tensor
 
 
 class RBFExpansion(nn.Module):
@@ -36,6 +37,21 @@ class RBFExpansion(nn.Module):
     def forward(self, distance: torch.Tensor) -> torch.Tensor:
         """Apply RBF expansion to interatomic distance tensor."""
         return torch.exp(-self.gamma * (distance.unsqueeze(1) - self.centers) ** 2)
+
+
+class ShiftedSoftplus(torch.nn.Module):
+    """Shifted softplus function.
+
+    Implementation from torch_geometric.nn.models.schnet.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.shift = torch.log(torch.tensor(2.0)).item()
+        self.softplus = nn.Softplus()
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.softplus(x) - self.shift
 
 
 # TODO: depreciated

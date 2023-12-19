@@ -2,7 +2,8 @@
 __pycache__
 .ipynb_checkpoints
 .vscode
-logs*
+logs/
+wandb/
 tmp*
 old*
 _experimental

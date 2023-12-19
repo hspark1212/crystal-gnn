@@ -26,14 +26,14 @@ def config():
 
     # dataloader
     batch_size = 64
-    num_workers = 0
+    num_workers = 8
     pin_memory = True
 
     # model
-    model_name = "cgcnn"  # "schnet", "cgcnn", "alignn"
+    model_name = "cgcnn"  # "schnet", "cgcnn", "megnet"
     num_conv = 4
     hidden_dim = 128
-    rbf_distance_dim = 50  # edge feature dimension
+    rbf_distance_dim = 80  # edge feature dimension
     batch_norm = True
     residual = True
     dropout = 0.0
@@ -50,7 +50,7 @@ def config():
     accelerator = "gpu"  # "cpu", "gpu"
     max_epochs = 200
     deterministic = True  # set True for reproducibility
-    log_dir = "./crystal_gnn/logs"
+    log_dir = "./logs"
     load_path = ""  # to load pretrained model
     resume_from = None  # resume from checkpoint
 
@@ -71,6 +71,8 @@ def cgcnn():
 
 
 @ex.named_config
-def alignn():
-    exp_name = "alignn"
-    model_name = "alignn"
+def megnet():
+    exp_name = "megnet"
+    model_name = "megnet"
+    num_conv = 3
+    hidden_dim = 64

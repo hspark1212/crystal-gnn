@@ -1,19 +1,17 @@
-"""implemented in Benchmarking-GNNs 
-(https://github.com/graphdeeplearning/benchmarking-gnns/blob/master/layers/gated_gcn_layer.py)"""
-
-import dgl
-import dgl.function as fn
 import torch
+from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
+from torch_geometric.nn import MessagePassing
+from torch_geometric.utils import scatter
 
 
-class GatedGCNLayer(nn.Module):
+class GatedGCNLayer(MessagePassing):
     """ResGatedGCN: Residual Gated Graph ConvNets
 
-    "An Experimental Study of Neural Networks for Variable Graph"
+    "Residual Gated Graph ConvNets"
     ICLR (2018)
-    https://arxiv.org/pdf/1711.07553v2.pdf
+    https://openreview.net/forum?id=HyXBcYg0b
     """
 
     def __init__(
@@ -44,55 +42,64 @@ class GatedGCNLayer(nn.Module):
 
     def forward(
         self,
-        g: dgl.DGLGraph,
-        h: torch.Tensor,
-        e: torch.Tensor,
+        node_feats: torch.Tensor,
+        edge_feats: torch.Tensor,
+        edge_index: torch.Tensor,
     ):
-        """
-        Args:
-            g (dgl.DGLGraph): DGLGraph
-            h (torch.Tensor): embedded node features
-            e (torch.Tensor): embedded edge features
-        Return:
-            h (torch.Tensor): updated node features
-            e (torch.Tensor): updated edge features
-        """
-        h_in = h  # for residual connection
-        e_in = e  # for residual connection
+        h = node_feats  # [B_n, H]
+        Ah = self.A(node_feats)  # [B_n, H]
+        Bh = self.B(node_feats)  # [B_n, H]
+        Dh = self.D(node_feats)  # [B_n, H]
+        Eh = self.E(node_feats)  # [B_n, H]
+        e = edge_feats  # [B_e, H]
+        Ce = self.C(edge_feats)  # [B_e, H]
 
-        g.ndata["h"] = h
-        g.ndata["Ah"] = self.A(h)
-        g.ndata["Bh"] = self.B(h)
-        g.ndata["Dh"] = self.D(h)
-        g.ndata["Eh"] = self.E(h)
-        g.edata["e"] = e
-        g.edata["Ce"] = self.C(e)
-
-        g.apply_edges(fn.u_add_v("Dh", "Eh", "DEh"))
-        g.edata["e"] = g.edata["DEh"] + g.edata["Ce"]  # updated edge features (e^_ij)
-        g.edata["sigma"] = torch.sigmoid(g.edata["e"])  # sigma(e^_ij)
-        # numerator
-        g.update_all(fn.u_mul_e("Bh", "sigma", "m"), fn.sum("m", "sum_sigma_h"))
-        # denominator
-        g.update_all(fn.copy_e("sigma", "m"), fn.sum("m", "sum_sigma"))
-        g.ndata["h"] = g.ndata["Ah"] + g.ndata["sum_sigma_h"] / (
-            g.ndata["sum_sigma"] + 1e-6
-        )  # updated node features
-        h = g.ndata["h"]
-        e = g.edata["e"]
-
+        out_h, out_e = self.propagate(
+            edge_index, h=h, Ah=Ah, Bh=Bh, Dh=Dh, Eh=Eh, e=e, Ce=Ce
+        )
+        # batch norm
         if self.batch_norm:
-            h = self.bn_node_h(h)
-            e = self.bn_node_e(e)
-
-        h = F.silu(h)
-        e = F.silu(e)
-
+            out_h = self.bn_node_h(out_h)
+            out_e = self.bn_node_e(out_e)
+        # nonlinearity
+        out_h = F.silu(out_h)
+        out_e = F.silu(out_e)
+        # residual connection
         if self.residual:
-            h = h_in + h
-            e = e_in + e
+            out_h = h + out_h
+            out_e = e + out_e
+        # dropout
+        out_h = F.dropout(out_h, p=self.dropout, training=self.training)
+        out_e = F.dropout(out_e, p=self.dropout, training=self.training)
 
-        h = F.dropout(h, self.dropout, training=self.training)
-        e = F.dropout(e, self.dropout, training=self.training)
+        return out_h, out_e
 
-        return h, e
+    def message(
+        self,
+        Bh_i: Tensor,
+        Dh_j: Tensor,
+        Eh_j: Tensor,
+        Ce: Tensor,
+    ) -> Tensor:
+        # update edge features {e^_ij}
+        e = Dh_j + Eh_j + Ce  # [B_e, H]
+        # sigma
+        sigma = torch.sigmoid(e)  # [B_e, H]
+        # numerator
+        sigma_h = Bh_i * sigma  # [B_e, H]
+        return sigma_h, sigma, e
+
+    def aggregate(
+        self,
+        inputs: Tensor,
+        index: Tensor,
+    ) -> Tensor:
+        sigma_h, sigma, e = inputs
+        sum_sigma_h = scatter(sigma_h, index, dim=0, reduce="sum")  # [B_n, H]
+        sum_sigma = scatter(sigma, index, dim=0, reduce="sum")  # [B_n, H]
+        return sum_sigma_h, sum_sigma, e
+
+    def update(self, aggr_out: Tensor, Ah: Tensor) -> Tensor:
+        sum_sigma_h, sum_sigma, out_e = aggr_out
+        out_h = Ah + sum_sigma_h / (sum_sigma + 1e-6)  # [B_n, H]
+        return out_h, out_e

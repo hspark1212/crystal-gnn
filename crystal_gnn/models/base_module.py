@@ -134,8 +134,11 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
     ) -> torch.Tensor:
         logits = self.forward(batch)
         logits = logits.squeeze()
+        # get train_mean and train_std
+        train_mean = float(batch["train_mean"][0] if "train_mean" in batch else 0)
+        train_std = float(batch["train_std"][0] if "train_std" in batch else 1)
         if self.num_classes == 1:
-            logits = self.normalizer.decode(logits)
+            logits = (logits * train_std) + train_mean  # decode
         elif self.num_classes == 2:
             logits = torch.sigmoid(logits)
             logits = logits > 0.5

@@ -99,11 +99,11 @@ class BaseDataModule(LightningDataModule):
                 "ijS",
                 a=atoms,
                 cutoff=self.cutoff,
-                self_interaction=False,  # TODO: check self_interaction
+                self_interaction=True,
             )
-            pos = torch.tensor(atoms.get_positions())
-            lattice = torch.tensor(atoms.cell.array).unsqueeze(0)
-            edge_shift = torch.tensor(edge_shift)
+            pos = torch.tensor(atoms.get_positions()).float()
+            lattice = torch.tensor(atoms.cell.array).unsqueeze(0).float()
+            edge_shift = torch.tensor(edge_shift).float()
             relative_vec = (
                 pos[edge_dst]
                 - pos[edge_src]
