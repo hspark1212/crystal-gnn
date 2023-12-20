@@ -5,6 +5,15 @@ import torch
 from torch import nn
 from torch import Tensor
 
+NONLINEARITY = {
+    "none": lambda x: x,
+    "relu": nn.functional.relu,
+    "raw_swish": nn.functional.silu,  # TODO: check raw_swish
+    "tanh": nn.functional.tanh,
+    "sigmoid": nn.functional.sigmoid,
+    "silu": nn.functional.silu,
+}
+
 
 class RBFExpansion(nn.Module):
     """Expand interatomic distances with radial basis functions."""

@@ -1,7 +1,7 @@
 # 1. evaluate models on all matbench datasets
 python eval_matbench.py with model_name=schnet target=all log_dir="crystal_gnn/logs_matbench"
 python eval_matbench.py with model_name=cgcnn target=all log_dir="crystal_gnn/logs_matbench"
-python eval_matbench.py with model_name=alignn target=all log_dir="crystal_gnn/logs_matbench" num_conv=3
+python eval_matbench.py with model_name=nequip target=all log_dir="crystal_gnn/logs_matbench"
 
 # 2. evaluate models with specific target
 # python eval_matbench.py with model_name=schnet target=matbench_mp_gap

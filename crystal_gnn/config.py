@@ -8,6 +8,7 @@ alignn_config = {}
 
 @ex.config
 def config():
+    project_name = "crystal-gnn"  # for wandb
     exp_name = "crystal-gnn"
     seed = 0
     test_only = False
@@ -31,7 +32,7 @@ def config():
 
     # model
     model_name = "cgcnn"  # "schnet", "cgcnn", "megnet"
-    num_conv = 4
+    num_conv = 4  # TODO: update to 3
     hidden_dim = 128
     rbf_distance_dim = 80  # edge feature dimension
     batch_norm = True
@@ -74,11 +75,23 @@ def cgcnn():
 def megnet():
     exp_name = "megnet"
     model_name = "megnet"
-    num_conv = 3
-    hidden_dim = 64
 
 
 @ex.named_config
 def alignn():
     exp_name = "alignn"
     model_name = "alignn"
+
+
+@ex.named_config
+def nequip():
+    exp_name = "nequip"
+    model_name = "nequip"
+
+
+@ex.named_config
+def matbench_log_gvrh_cgcnn():
+    exp_name = "matbench_log_gvrh_cgcnn"
+    source = "matbench"
+    target = "matbench_log_gvrh"
+    model_name = "cgcnn"

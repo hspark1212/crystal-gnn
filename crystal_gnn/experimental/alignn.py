@@ -89,10 +89,8 @@ class ALIGNN(BaseModule):
         self.readout.reset_parameters()
 
     def forward(self, data: Union[Data, Batch]) -> torch.Tensor:
-        if isinstance(data, Batch):
-            data_lg = self.convert_line_graph(data)
-        else:
-            data_lg = self.line_graph(data)
+        # make line graph (it takes long time, but it is here to make dataset simple)
+        data_lg = self.line_graph(data)
         # node embedding
         node_attrs = data.x  # [B_n]
         node_feats = self.node_embedding(node_attrs)  # [B_n, H]
@@ -100,10 +98,12 @@ class ALIGNN(BaseModule):
         distances = torch.norm(data.relative_vec, dim=-1)  # [B_e]
         edge_feats = self.rbf_expansion_distance(distances)  # [B_e, D]
         edge_feats = self.edge_embedding(edge_feats)  # [B_e, H]
+
         # angle embedding
         angles = calculate_angle(data_lg)  # [B_lg_e]
         angle_feats = self.rbf_expansion_triplet(angles)  # [B_lg_e, D]
         angle_feats = self.angle_embedding(angle_feats)  # [B_lg_e, H]
+
         # conv layers
         for conv_layer in self.conv_layers:
             node_feats, edge_feats, angle_feats = conv_layer(
@@ -114,6 +114,7 @@ class ALIGNN(BaseModule):
             node_feats, _ = gated_gcn_layer(
                 node_feats, edge_feats, data.edge_index
             )  # [B_n, H], [B_e, H]
+
         # pooling
         node_feats = self.avg_pool(node_feats, data.batch)  # [B, H]
         # readout
@@ -121,13 +122,6 @@ class ALIGNN(BaseModule):
         node_feats = F.silu(node_feats)
         out = self.readout(node_feats)  # [B, O]
         return out
-
-    def convert_line_graph(self, data: Batch):
-        d_lg_list = []
-        for d in data.to_data_list():
-            d_lg = self.line_graph(d)
-            d_lg_list.append(d_lg)
-        return Batch.from_data_list(d_lg_list)
 
 
 class ALIGNNlayer(nn.Module):

@@ -26,6 +26,11 @@ class MatbenchDataModule(BaseDataModule):
         self.test_ratio = _config["test_ratio"]
         self.database_name = None  # this is not used for Matbench
 
+        # load matbench data
+        self.mb = MatbenchBenchmark(autoload=False, subset=[self.target])
+        self.mb.load()
+        self.task = list(self.mb.tasks)[0]
+
     def prepare_data(self) -> None:
         """Download data from MATBENCH and split into train, val, test.
 
@@ -41,12 +46,7 @@ class MatbenchDataModule(BaseDataModule):
         if not path_target.exists():
             path_target.mkdir(parents=True, exist_ok=True)
 
-        # load matbench data
-        mb = MatbenchBenchmark(autoload=False, subset=[self.target])
-        mb.load()
-        task = list(mb.tasks)[0]
-
-        for fold in task.folds:
+        for fold in self.task.folds:
             # check if the prepared data already exists
             path_train = Path(path_target, f"train-{self.target}-fold{fold}.pt")
             path_val = Path(path_target, f"val-{self.target}-fold{fold}.pt")
@@ -61,7 +61,7 @@ class MatbenchDataModule(BaseDataModule):
                 print(f"load graph data from {path_target} for fold {fold}")
                 continue
 
-            inputs, outputs = task.get_train_and_val_data(fold)
+            inputs, outputs = self.task.get_train_and_val_data(fold)
             # split train and val data
             randperm = torch.randperm(len(inputs)).tolist()
             num_train = int(len(inputs) * self.train_ratio)
@@ -76,7 +76,9 @@ class MatbenchDataModule(BaseDataModule):
             val_names, val_structures = zip(*val_inputs.items())
             val_targets = val_outputs.values
             # get test data
-            test_inputs, test_outputs = task.get_test_data(fold, include_target=True)
+            test_inputs, test_outputs = self.task.get_test_data(
+                fold, include_target=True
+            )
             # make test data
             test_names, test_structures = zip(*test_inputs.items())
             test_targets = test_outputs.values

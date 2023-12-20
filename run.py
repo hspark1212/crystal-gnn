@@ -1,4 +1,5 @@
 import copy
+from datetime import datetime
 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
@@ -13,6 +14,7 @@ from crystal_gnn.models import _models
 def main(_config):
     _config = copy.deepcopy(_config)
     pl.seed_everything(_config["seed"])
+    project_name = _config["project_name"]
     exp_name = _config["exp_name"]
     # set datamodule
     dm = _datamodules[_config["source"]](_config)
@@ -33,13 +35,16 @@ def main(_config):
     callbacks = [checkpoint_callback, lr_callback]
     # set logger
     logger = WandbLogger(
-        project="crystal_gnn",
+        project=project_name,
         name=f"{exp_name}",
-        # version=f"{exp_name}" if not _config["test_only"] else None, # TODO: check if needed
+        version=f"{exp_name}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+        if not _config["test_only"]
+        else None,
         save_dir=_config["log_dir"],
         log_model=True,
-        group=f"{_config['source']}-{_config['model_name']}-{_config['target']}",
+        group=f"{_config['source']}-{_config['target']}",
     )
+
     # set trainer
     trainer = pl.Trainer(
         devices=_config["devices"],
@@ -50,6 +55,7 @@ def main(_config):
         callbacks=callbacks,
         logger=logger,
     )
+
     if not _config["test_only"]:
         trainer.fit(model, dm, ckpt_path=_config["resume_from"])
         trainer.test(model, datamodule=dm, ckpt_path="best")

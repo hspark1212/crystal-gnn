@@ -7,11 +7,11 @@ from torch_geometric.utils import scatter
 
 
 class GatedGCNLayer(MessagePassing):
-    """ResGatedGCN: Residual Gated Graph ConvNets
-
-    "Residual Gated Graph ConvNets"
-    ICLR (2018)
-    https://openreview.net/forum?id=HyXBcYg0b
+    """
+    ResGatedGCN: Residual Gated Graph ConvNets
+    An Experimental Study of Neural Networks for Variable Graphs
+    (ICLR 2018)
+    https://arxiv.org/pdf/1711.07553v2.pdf
     """
 
     def __init__(
@@ -81,24 +81,24 @@ class GatedGCNLayer(MessagePassing):
         Eh_j: Tensor,
         Ce: Tensor,
     ) -> Tensor:
-        # update edge features {e^_ij}
-        e = Dh_j + Eh_j + Ce  # [B_e, H]
+        # update edge features {e_ij}
+        e_ij = Dh_j + Eh_j + Ce  # [B_e, H]
         # sigma
-        sigma = torch.sigmoid(e)  # [B_e, H]
+        sigma = torch.sigmoid(e_ij)  # [B_e, H]
         # numerator
         sigma_h = Bh_i * sigma  # [B_e, H]
-        return sigma_h, sigma, e
+        return sigma_h, sigma, e_ij
 
     def aggregate(
         self,
         inputs: Tensor,
         index: Tensor,
     ) -> Tensor:
-        sigma_h, sigma, e = inputs
-        return sigma_h, sigma, e, index
+        sigma_h, sigma, e_ij = inputs
+        return sigma_h, sigma, e_ij, index
 
     def update(self, aggr_out: Tensor, Ah: Tensor) -> Tensor:
-        sigma_h, sigma, out_e, index = aggr_out  # [B_e, H], [B_e, H], [B_e, H], [B_e]
+        sigma_h, sigma, e_ij, index = aggr_out  # [B_e, H], [B_e, H], [B_e, H], [B_e]
         # aggregate
         sum_sigma_h = scatter(
             sigma_h, index, dim=0, dim_size=Ah.size(0), reduce="sum"
@@ -108,4 +108,4 @@ class GatedGCNLayer(MessagePassing):
         )  # [B_n, H]
         # update
         out_h = Ah + sum_sigma_h / (sum_sigma + 1e-6)  # [B_n, H]
-        return out_h, out_e
+        return out_h, e_ij

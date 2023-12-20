@@ -1,15 +1,16 @@
-# this script is used to evaluate the performance of the models
-# using Matbench datasets
-import os
 import copy
+from pathlib import Path
+from datetime import datetime
 
 import torch
 import pytorch_lightning as pl
-from matbench import MatbenchBenchmark
+from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
 from crystal_gnn.config import ex
+from crystal_gnn.datamodules import _datamodules
 from crystal_gnn.models import _models
-from crystal_gnn.datamodules.matbench_datamodule import MatbenchDataModule
+
 
 MB_TASKS = [
     "matbench_log_gvrh",
@@ -26,91 +27,95 @@ MB_TASKS = [
 def main(_config):
     _config = copy.deepcopy(_config)
     pl.seed_everything(_config["seed"])
-    model_name = _config["model_name"]
-    target = _config["target"]
-    if target == "all":
-        target_tasks = MB_TASKS
-    else:
-        if target in MB_TASKS:
-            target_tasks = [target]
-        else:
-            raise ValueError(
-                f"The target should be in {MB_TASKS}, Got {target} instead."
-            )
-
-    def get_matbench_task_by_name(name):
-        for task in mb.tasks:
-            if task.dataset_name == name:
-                return task
-        raise ValueError(f"Can't find {name} in MatbenchBenchmark.")
-
-    for target_task in target_tasks:
-        mb = MatbenchBenchmark(autoload=False)
-        task = get_matbench_task_by_name(target_task)
-
-        for fold in task.folds:
-            # set datamodule
-            dm = MatbenchDataModule(task, fold, _config)
-            # set num_classes
-            if task.metadata.task_type == "classification":
-                _config["num_classes"] = 2
-            else:
-                _config["num_classes"] = 1
-            # set mean and std for Normalizer
-            if _config["num_classes"] == 1:
-                _config["mean"] = dm.train_targets.mean()
-                _config["std"] = dm.train_targets.std()
-            # set model
-            model = _models[_config["model_name"]](_config)
-            print(model)
-            # set checkpoint callback
-            checkpoint_callback = pl.callbacks.ModelCheckpoint(
-                save_top_k=1,
-                verbose=True,
-                monitor="val/loss",
-                mode="min",
-                filename="best-{epoch}",
-            )
-            lr_callback = pl.callbacks.LearningRateMonitor(logging_interval="step")
-            callbacks = [checkpoint_callback, lr_callback]
-            # set logger
-            logger = pl.loggers.TensorBoardLogger(
-                _config["log_dir"],
-                name=f"{model_name}_{task.dataset_name}",
-                version=f"fold_{fold}",
-                default_hp_metric=False,
-            )
-            # set trainer
-            trainer = pl.Trainer(
-                devices=_config["devices"],
-                accelerator=_config["accelerator"],
-                max_epochs=_config["max_epochs"],
-                strategy="ddp_find_unused_parameters_true",
-                deterministic=_config["deterministic"],
-                callbacks=callbacks,
-                logger=logger,
-            )
-            # train
-            trainer.fit(model, dm)
-            # test
-            trainer.test(model, dm, ckpt_path="best")
-            # predict
-            predictions = trainer.predict(model, dm, return_predictions=True)
-            predictions = torch.cat(predictions, dim=0)
-            # record predictions
-            task.record(fold, predictions)
-            # temporary save json for matbench
-            save_path = os.path.join(
-                _config["log_dir"],
-                f"{model_name}_{task.dataset_name}",
-                f"results_{model_name}_{task.dataset_name}.json.gz",
-            )
-            mb.to_file(save_path)
-        # save json for matbench
-        save_path = os.path.join(
-            _config["log_dir"],
-            f"{model_name}_{task.dataset_name}",
-            f"results_{model_name}_{task.dataset_name}.json.gz",
+    project_name = _config["project_name"]
+    exp_name = _config["exp_name"]
+    # set datamodule
+    dm = _datamodules[_config["source"]](_config)
+    # prepare data
+    dm.prepare_data()
+    # set model
+    model = _models[_config["model_name"]](_config)
+    print(model)
+    # set checkpoint callback
+    checkpoint_callback = ModelCheckpoint(
+        save_top_k=1,
+        verbose=True,
+        monitor="val/loss",
+        mode="min",
+        filename="best-{epoch}",
+    )
+    lr_callback = LearningRateMonitor(logging_interval="step")
+    callbacks = [checkpoint_callback, lr_callback]
+    # set logger
+    logger = WandbLogger(
+        project=project_name,
+        name=f"{exp_name}",
+        version=f"{exp_name}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+        if not _config["test_only"]
+        else None,
+        save_dir=_config["log_dir"],
+        log_model=True,
+        group=f"{_config['source']}-{_config['target']}",
+    )
+    for fold in range(5):
+        # set trainer
+        trainer = pl.Trainer(
+            devices=_config["devices"],
+            accelerator=_config["accelerator"],
+            max_epochs=_config["max_epochs"],
+            strategy="ddp_find_unused_parameters_true",
+            deterministic=_config["deterministic"],
+            callbacks=callbacks,
+            logger=logger,
         )
-        mb.to_file(save_path)
-        print(f"save matbench results to {save_path}")
+
+        if not _config["test_only"]:
+            dm.setup(stage="fit", fold=fold)
+            trainer.fit(
+                model,
+                train_dataloaders=dm.train_dataloader(),
+                val_dataloaders=dm.val_dataloader(),
+                ckpt_path=_config["resume_from"],
+            )
+            dm.setup(stage="test", fold=fold)
+            trainer.test(
+                model,
+                dataloaders=dm.test_dataloader(),
+                ckpt_path="best",
+            )
+        else:
+            print(f"load model from {_config['load_path']}")
+            dm.setup(stage="test", fold=fold)
+            trainer.test(
+                model,
+                dataloaders=dm.test_dataloader(),
+                ckpt_path=_config["load_path"],
+            )
+
+        # predict
+        predictions = trainer.predict(
+            model,
+            dataloaders=dm.test_dataloader(),
+            return_predictions=True,
+        )
+        predictions = torch.cat(predictions, dim=0)
+        # record predictions
+        task = dm.task
+
+        task.record(fold, predictions)
+        # temporary save json for matbench
+        save_path = Path(
+            _config["log_dir"],
+            f"{_config['model_name']}_{task.dataset_name}",
+            f"results_{_config['model_name']}_{task.dataset_name}.json.gz",
+        )
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        dm.mb.to_file(save_path)
+    # save json for matbench
+    save_path = Path(
+        _config["log_dir"],
+        f"{_config['model_name']}_{task.dataset_name}",
+        f"results_{_config['model_name']}_{task.dataset_name}.json.gz",
+    )
+    dm.mb.to_file(save_path)
+    print(f"save matbench results to {save_path}")
