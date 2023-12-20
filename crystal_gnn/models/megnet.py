@@ -58,7 +58,7 @@ class MEGNET(BaseModule):
 
         self.set2set_node = Set2Set(self.hidden_dim, processing_steps=3)
         self.set2set_edge = Set2Set(self.hidden_dim, processing_steps=3)
-
+        self.nonlinear = ShiftedSoftplus()
         self.readout = MLPReadout(self.hidden_dim * 5, self.readout_dim, bias=False)
 
     def reset_parameters(self) -> None:
@@ -101,7 +101,7 @@ class MEGNET(BaseModule):
         edge_feats = self.set2set_edge(edge_feats, batch[idx_src])  # [B, 2H]
         # concat
         out = torch.cat([node_feats, edge_feats, global_feats], dim=1)  # [B, 5H]
-        out = F.silu(out)  # [B, 5H]
+        out = self.nonlinear(out)  # [B, 5H]
         # readout
         out = self.readout(out)  # [B, H]
         return out
@@ -125,7 +125,7 @@ class MEBNETBlock(nn.Module):
         self.n_edge_features = block_hidden_dim
         self.n_global_features = block_hidden_dim
 
-        self.nonlinear = nn.SiLU()
+        self.nonlinear = ShiftedSoftplus()
 
         self.lin_node_1 = nn.Linear(hidden_dim, block_hidden_dim)
         self.lin_edge_1 = nn.Linear(hidden_dim, block_hidden_dim)
@@ -197,7 +197,6 @@ class MEBNETBlock(nn.Module):
         global_feats = self.fn_global_model(
             node_feats, edge_feats, global_feats, edge_index, batch
         )  # [B, H_]
-        # nonlinear
         node_feats = self.nonlinear(self.lin_node_2(node_feats))  # [B_n, H]
         edge_feats = self.nonlinear(self.lin_edge_2(edge_feats))  # [B_e, H]
         global_feats = self.nonlinear(self.lin_global_2(global_feats))  # [B, H]
@@ -233,6 +232,7 @@ class EdgeModel(nn.Module):
                 n_node_features * 2 + n_edge_features + n_global_features,
                 block_hidden_dim,
             ),
+            ShiftedSoftplus(),
         )
 
     def reset_parameters(self) -> None:
@@ -274,6 +274,7 @@ class NodeModel(nn.Module):
                 n_node_features + n_edge_features + n_global_features,
                 block_hidden_dim,
             ),
+            ShiftedSoftplus(),
         )
 
     def reset_parameters(self) -> None:
@@ -309,6 +310,7 @@ class GlobalModel(nn.Module):
                 n_node_features + n_edge_features + n_global_features,
                 block_hidden_dim,
             ),
+            ShiftedSoftplus(),
         )
 
     def reset_parameters(self) -> None:
