@@ -3,6 +3,7 @@ from typing import Union, Dict, Any
 import torch
 from torch import Tensor
 import torch.nn as nn
+import torch.nn.functional as F
 from torch_geometric.nn import global_mean_pool
 from torch_geometric.data import Data, Batch
 from torch_geometric.transforms import LineGraph
@@ -107,8 +108,19 @@ class ALIGNN(BaseModule):
         for conv_layer in self.conv_layers:
             node_feats, edge_feats, angle_feats = conv_layer(
                 data, data_lg, node_feats, edge_feats, angle_feats
-            )
-        assert False
+            )  # [B_n, H], [B_e, H], [B_lg_e, H]
+        # gated gcn layers
+        for gated_gcn_layer in self.gated_gcn_layer:
+            node_feats, _ = gated_gcn_layer(
+                node_feats, edge_feats, data.edge_index
+            )  # [B_n, H], [B_e, H]
+        # pooling
+        node_feats = self.avg_pool(node_feats, data.batch)  # [B, H]
+        # readout
+        node_feats = self.lin(node_feats)  # [B, H]
+        node_feats = F.silu(node_feats)
+        out = self.readout(node_feats)  # [B, O]
+        return out
 
     def convert_line_graph(self, data: Batch):
         d_lg_list = []
