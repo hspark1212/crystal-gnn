@@ -23,7 +23,8 @@ def config():
     train_ratio = 0.8
     val_ratio = 0.1
     test_ratio = 0.1
-    cutoff = 5.0
+    cutoff = 8.0
+    max_neighbors = 12  # None or int
 
     # dataloader
     batch_size = 64
