@@ -1,6 +1,7 @@
 from typing import Dict, Any, List, Iterable
 from tqdm import tqdm
 
+import numpy as np
 from ase import Atoms
 from ase.neighborlist import neighbor_list
 
@@ -20,6 +21,7 @@ class BaseDataModule(LightningDataModule):
         self.test_dataset = None
         # configs for prepare_data
         self.cutoff = _config["cutoff"]
+        self.max_neighbors = _config["max_neighbors"]
 
         # configs for dataloader
         self.batch_size = _config["batch_size"]
@@ -95,12 +97,29 @@ class BaseDataModule(LightningDataModule):
         """Make list of torch_geometric.data.Data from list of ASE.Atoms."""
         graphs = []
         for i, atoms in enumerate(tqdm(atoms_list)):
-            edge_src, edge_dst, edge_shift = neighbor_list(
-                "ijS",
+            edge_src, edge_dst, distance, edge_shift = neighbor_list(
+                "ijdS",
                 a=atoms,
                 cutoff=self.cutoff,
-                self_interaction=True,
+                self_interaction=False,
             )
+            if self.max_neighbors is not None:
+                new_edge_src = []
+                new_edge_dst = []
+                new_edge_shift = []
+                for i in range(len(atoms)):
+                    idx = np.where(edge_src == i)[0]
+                    sorted_idx = idx[np.argsort(distance[idx])][: self.max_neighbors]
+                    new_edge_src.extend(edge_src[sorted_idx])
+                    new_edge_dst.extend(edge_dst[sorted_idx])
+                    new_edge_shift.extend(edge_shift[sorted_idx])
+
+                edge_src = np.array(new_edge_src)
+                edge_dst = np.array(new_edge_dst)
+                edge_shift = np.array(new_edge_shift)
+                if len(edge_src) == 0:
+                    edge_shift = np.empty((0, 3))
+
             pos = torch.tensor(atoms.get_positions()).float()
             lattice = torch.tensor(atoms.cell.array).unsqueeze(0).float()
             edge_shift = torch.tensor(edge_shift).float()
@@ -127,6 +146,5 @@ class BaseDataModule(LightningDataModule):
                     graph_data[k] = v
 
             graph = Data(**graph_data)
-
             graphs.append(graph)
         return graphs
