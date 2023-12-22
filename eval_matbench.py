@@ -29,6 +29,7 @@ def main(_config):
     pl.seed_everything(_config["seed"])
     project_name = _config["project_name"]
     exp_name = _config["exp_name"]
+    log_dir = Path(_config["log_dir"], _config["source"])
     # set datamodule
     dm = _datamodules[_config["source"]](_config)
     # prepare data
@@ -46,18 +47,20 @@ def main(_config):
     )
     lr_callback = LearningRateMonitor(logging_interval="step")
     callbacks = [checkpoint_callback, lr_callback]
-    # set logger
-    logger = WandbLogger(
-        project=project_name,
-        name=f"{exp_name}",
-        version=f"{exp_name}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-        if not _config["test_only"]
-        else None,
-        save_dir=_config["log_dir"],
-        log_model=True,
-        group=f"{_config['source']}-{_config['target']}",
-    )
+
     for fold in range(5):
+        # set logger
+        # set logger
+        logger = WandbLogger(
+            project=project_name,
+            name=f"{exp_name}",
+            version=f"{exp_name}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+            if not _config["test_only"]
+            else None,
+            save_dir=log_dir,
+            log_model="all",  # TODO: all or True?
+            group=f"{_config['source']}-{_config['target']}-{_config['model_name']}",
+        )
         # set trainer
         trainer = pl.Trainer(
             devices=_config["devices"],
