@@ -111,7 +111,14 @@ class InteractionBlock(nn.Module):
         self.residual = residual
         self.dropout = dropout
 
-        self.cfconv = CFconv(hidden_dim, edge_feat_dim, cutoff)
+        self.cfconv = CFconv(
+            hidden_dim,
+            edge_feat_dim,
+            cutoff,
+            batch_norm,
+            residual,
+            dropout,
+        )
         self.shift_softplus = ShiftedSoftplus()
         self.lin = nn.Linear(hidden_dim, hidden_dim, bias=False)
         self.bn = nn.BatchNorm1d(hidden_dim)
@@ -164,8 +171,14 @@ class CFconv(MessagePassing):
         hidden_dim: int,
         edge_feat_dim: int,
         cutoff: float,
+        batch_norm: bool,
+        residual: bool,
+        dropout: float,
     ) -> None:
         super().__init__(aggr="add")
+        self.batch_norm = batch_norm
+        self.residual = residual
+        self.dropout = dropout
         self.cutoff = cutoff
         self.mlp = nn.Sequential(
             nn.Linear(edge_feat_dim, hidden_dim),
@@ -174,6 +187,7 @@ class CFconv(MessagePassing):
         )
         self.lin_1 = nn.Linear(hidden_dim, hidden_dim, bias=False)
         self.lin_2 = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.bn = nn.BatchNorm1d(hidden_dim)
 
     def reset_parameters(self) -> None:
         self.mlp.reset_parameters()
@@ -203,6 +217,14 @@ class CFconv(MessagePassing):
             edge_index, h=node_feats, edge_feats=edge_feats
         )  # [B_n, H]
         node_feats = self.lin_2(node_feats)  # [B_n, H]
+        # batch norm
+        if self.batch_norm:
+            node_feats = self.bn(node_feats)
+        # residual connection
+        if self.residual:
+            node_feats += node_feats
+        # dropout
+        node_feats = F.dropout(node_feats, p=self.dropout, training=self.training)
         return node_feats
 
     def message(self, h_j: Tensor, edge_feats: Tensor) -> Tensor:

@@ -136,5 +136,5 @@ class CGCNNlayer(MessagePassing):
             aggr_out = self.bn(aggr_out)  # [B_n, H]
         # residual connection
         if self.residual:
-            h = h + aggr_out  # [B_n, H]
-        return h
+            aggr_out = aggr_out + h
+        return aggr_out  # [B_n, H]

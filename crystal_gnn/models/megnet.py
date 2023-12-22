@@ -207,7 +207,6 @@ class MEBNETBlock(nn.Module):
             node_feats = self.bn_node(node_feats)  # [B_n, H]
             edge_feats = self.bn_edge(edge_feats)  # [B_e, H]
             global_feats = self.bn_global(global_feats)  # [B, H]
-
         # residual connection
         if self.residual:
             node_feats += orig_node_feats  # [B_n, H]

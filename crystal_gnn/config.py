@@ -41,10 +41,10 @@ def config():
     num_classes = 1  # if higher than 1, classification mode is activated
 
     # optimizer
-    optimizer = "adamw"  # "adma", "sgd", "adamw"
+    optimizer = "adam"  # "adma", "sgd", "adamw"
     lr = 1e-3  # learning rate
     weight_decay = 1e-5
-    scheduler = "reduce_on_plateau"  # "constant", "cosine", "reduce_on_plateau", "constant_with_warmup"
+    scheduler = "constant_with_warmup"  # "constant", "cosine", "reduce_on_plateau", "constant_with_warmup"
 
     # training
     devices = 1  # number of GPUs to use

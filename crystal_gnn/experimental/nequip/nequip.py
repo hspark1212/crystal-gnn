@@ -299,7 +299,7 @@ class NequIPConvolution(nn.Module):
         )  # [n_nodes, h_out_irreps]
 
         # normalize by the average (not local) number of neighbors
-        h = h / self.n_neighbors
+        h = h / self.n_neighbors  # TODO: check
 
         # Linear_2, now we create extra gate scalars by mapping to h-out
         h = self.lin_2(h)
@@ -367,7 +367,8 @@ class NEQUIP(BaseModule):
         self.radial_net_n_hidden: int = 64
         self.radial_net_n_layers: int = 2
 
-        self.n_neighbors: float = 10.0
+        self.n_neighbors: float = 1.0
+        # self.n_neighbors: float = 10.0 # TODO: check it
         # self.scalar_mlp_std: float = 4.0  # TODO: check it
 
         # layers
