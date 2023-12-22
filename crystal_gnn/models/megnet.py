@@ -40,8 +40,10 @@ class MEGNET(BaseModule):
         self.rbf_expansion = RBFExpansion(
             vmin=0, vmax=self.cutoff, bins=self.rbf_distance_dim
         )
-        self.edge_embedding = nn.Linear(self.rbf_distance_dim, self.hidden_dim)
-        self.global_embedding = nn.Linear(self.global_dim, self.hidden_dim)
+        self.edge_embedding = nn.Linear(
+            self.rbf_distance_dim, self.hidden_dim, bias=False
+        )
+        self.global_embedding = nn.Linear(self.global_dim, self.hidden_dim, bias=False)
         # The dimensions of node, edge, and global features are set to hidden_dim // 2.
         self.megnet_blocks = nn.ModuleList(
             [
@@ -127,9 +129,9 @@ class MEBNETBlock(nn.Module):
 
         self.nonlinear = ShiftedSoftplus()
 
-        self.lin_node_1 = nn.Linear(hidden_dim, block_hidden_dim)
-        self.lin_edge_1 = nn.Linear(hidden_dim, block_hidden_dim)
-        self.lin_global_1 = nn.Linear(hidden_dim, block_hidden_dim)
+        self.lin_node_1 = nn.Linear(hidden_dim, block_hidden_dim, bias=False)
+        self.lin_edge_1 = nn.Linear(hidden_dim, block_hidden_dim, bias=False)
+        self.lin_global_1 = nn.Linear(hidden_dim, block_hidden_dim, bias=False)
 
         self.fn_edge_update = EdgeModel(
             n_node_features=block_hidden_dim,
@@ -149,9 +151,9 @@ class MEBNETBlock(nn.Module):
             n_global_features=block_hidden_dim,
             block_hidden_dim=block_hidden_dim,
         )
-        self.lin_node_2 = nn.Linear(block_hidden_dim, hidden_dim)
-        self.lin_edge_2 = nn.Linear(block_hidden_dim, hidden_dim)
-        self.lin_global_2 = nn.Linear(block_hidden_dim, hidden_dim)
+        self.lin_node_2 = nn.Linear(block_hidden_dim, hidden_dim, bias=False)
+        self.lin_edge_2 = nn.Linear(block_hidden_dim, hidden_dim, bias=False)
+        self.lin_global_2 = nn.Linear(block_hidden_dim, hidden_dim, bias=False)
 
         self.bn_node = nn.BatchNorm1d(hidden_dim)
         self.bn_edge = nn.BatchNorm1d(hidden_dim)
@@ -231,6 +233,7 @@ class EdgeModel(nn.Module):
             nn.Linear(
                 n_node_features * 2 + n_edge_features + n_global_features,
                 block_hidden_dim,
+                bias=False,
             ),
             ShiftedSoftplus(),
         )
@@ -273,6 +276,7 @@ class NodeModel(nn.Module):
             nn.Linear(
                 n_node_features + n_edge_features + n_global_features,
                 block_hidden_dim,
+                bias=False,
             ),
             ShiftedSoftplus(),
         )
@@ -309,6 +313,7 @@ class GlobalModel(nn.Module):
             nn.Linear(
                 n_node_features + n_edge_features + n_global_features,
                 block_hidden_dim,
+                bias=False,
             ),
             ShiftedSoftplus(),
         )

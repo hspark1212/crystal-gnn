@@ -50,8 +50,8 @@ class SCHNET(BaseModule):
             ]
         )
         self.sum_pool = global_add_pool
-        self.lin_1 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
-        self.lin_2 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
+        self.lin_1 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=False)
+        self.lin_2 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=False)
         self.shift_softplus = ShiftedSoftplus()
         self.readout_lin_1 = nn.Linear(
             self.hidden_dim, self.hidden_dim // 2, bias=False
@@ -173,7 +173,7 @@ class CFconv(MessagePassing):
             nn.Linear(hidden_dim, hidden_dim),
         )
         self.lin_1 = nn.Linear(hidden_dim, hidden_dim, bias=False)
-        self.lin_2 = nn.Linear(hidden_dim, hidden_dim, bias=True)
+        self.lin_2 = nn.Linear(hidden_dim, hidden_dim, bias=False)
 
     def reset_parameters(self) -> None:
         self.mlp.reset_parameters()

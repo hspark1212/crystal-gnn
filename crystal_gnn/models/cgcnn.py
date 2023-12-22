@@ -51,7 +51,7 @@ class CGCNN(BaseModule):
             ]
         )
         self.avg_pool = global_mean_pool
-        self.lin = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
+        self.lin = nn.Linear(self.hidden_dim, self.hidden_dim, bias=False)
         self.readout = MLPReadout(self.hidden_dim, self.readout_dim, bias=False)
 
     def reset_parameters(self) -> None:
@@ -95,7 +95,7 @@ class CGCNNlayer(MessagePassing):
         self.dropout = dropout
 
         z_dim = hidden_dim * 2 + edge_feat_dim
-        self.lin = nn.Linear(z_dim, 2 * hidden_dim, bias=True)
+        self.lin = nn.Linear(z_dim, 2 * hidden_dim, bias=False)
         self.bn = nn.BatchNorm1d(hidden_dim)
 
     def reset_parameters(self) -> None:
