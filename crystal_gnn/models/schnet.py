@@ -11,6 +11,7 @@ from torch_geometric.nn.models.schnet import InteractionBlock
 
 from crystal_gnn.models.base_module import BaseModule
 from crystal_gnn.models.module_utils import RBFExpansion, ShiftedSoftplus
+from crystal_gnn.layers.mlp_readout import MLPReadout
 
 
 class SCHNET(BaseModule):
@@ -50,11 +51,9 @@ class SCHNET(BaseModule):
         )
         self.bn = nn.BatchNorm1d(self.hidden_dim)
         self.mean_pool = global_mean_pool
+        self.lin = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
         self.shift_softplus = ShiftedSoftplus()
-        self.readout_lin_1 = nn.Linear(self.hidden_dim, self.hidden_dim // 2, bias=True)
-        self.readout_lin_2 = nn.Linear(
-            self.hidden_dim // 2, self.readout_dim, bias=True
-        )
+        self.readout = MLPReadout(self.hidden_dim, self.readout_dim, bias=True)
 
         self.apply(self._init_weights)
 
@@ -82,9 +81,9 @@ class SCHNET(BaseModule):
         # pool
         node_feats = self.mean_pool(node_feats, data.batch)  # [B, H]
         # readout
-        node_feats = self.readout_lin_1(node_feats)  # [B, H//2]
-        node_feats = self.shift_softplus(node_feats)  # [B, H//2]
-        node_feats = self.readout_lin_2(node_feats)  # [B, O]
+        node_feats = self.lin(node_feats)  # [B, H]
+        node_feats = self.shift_softplus(node_feats)  # [B, H]
+        node_feats = self.readout(node_feats)
         return node_feats
 
 

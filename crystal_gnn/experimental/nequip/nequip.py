@@ -24,7 +24,9 @@ import functools
 import e3nn
 from e3nn.o3 import Irreps, Irrep, TensorProduct, Linear, FullyConnectedTensorProduct
 from e3nn.nn import FullyConnectedNet, Gate
-from torch_runstats.scatter import scatter
+
+# from torch_runstats.scatter import scatter
+from torch_geometric.utils import scatter
 
 import torch
 import torch.nn as nn
@@ -300,6 +302,7 @@ class NequIPConvolution(nn.Module):
             edge_dst,
             dim=0,
             dim_size=h.shape[0],
+            reduce="mean",  # TODO: check reduce="mean"
         )  # [n_nodes, h_out_irreps]
 
         # normalize by the average (not local) number of neighbors
@@ -490,6 +493,6 @@ class NEQUIP(BaseModule):
             atomic_output,
             data.batch,
             dim=0,
-            reduce="sum",  # TODO:check pooling original code is sum
+            reduce="mean",  # TODO:check pooling original code is sum
         )  # [B, 1]
         return graph_output
