@@ -64,6 +64,7 @@ class SCHNET(BaseModule):
         # node embedding
         node_attrs = data.x  # [B_n]
         node_feats = self.node_embedding(node_attrs)  # [B_n, H]
+        orig_node_feats = node_feats.clone()  # [B_n, H]
         # edge embedding
         distances = torch.norm(data.relative_vec, dim=-1)  # [B_e]
         edge_feats = self.rbf_expansion(distances)  # [B_e, D]
@@ -78,7 +79,7 @@ class SCHNET(BaseModule):
             if self.batch_norm:
                 node_feats = self.bn(node_feats)
             if self.residual:
-                node_feats += node_feats
+                node_feats = node_feats + orig_node_feats
             node_feats = F.dropout(node_feats, p=self.dropout, training=self.training)
         node_feats = self.lin_1(node_feats)  # [B_n, H]
         node_feats = self.shift_softplus(node_feats)  # [B_n, H]
