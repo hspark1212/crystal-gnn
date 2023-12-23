@@ -68,6 +68,10 @@ class BesselBasis(nn.Module):
         else:
             self.register_buffer("bessel_weights", bessel_weights)
 
+    def reset_parameters(self):
+        if self.trainable:
+            nn.init.constant_(self.bessel_weights, 1.0)
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Evaluate Bessel Basis for input x.

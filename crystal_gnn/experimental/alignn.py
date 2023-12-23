@@ -75,18 +75,7 @@ class ALIGNN(BaseModule):
         self.lin = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
         self.readout = MLPReadout(self.hidden_dim, self.readout_dim, bias=False)
 
-    def reset_parameters(self) -> None:
-        self.node_embedding.reset_parameters()
-        self.edge_embedding.reset_parameters()
-        self.angle_embedding.reset_parameters()
-        self.rbf_expansion_distance.reset_parameters()
-        self.rbf_expansion_triplet.reset_parameters()
-        for conv_layer in self.conv_layers:
-            conv_layer.reset_parameters()
-        for gated_gcn_layer in self.gated_gcn_layer:
-            gated_gcn_layer.reset_parameters()
-        self.lin.reset_parameters()
-        self.readout.reset_parameters()
+        self.apply(self._init_weights)
 
     def forward(self, data: Union[Data, Batch]) -> torch.Tensor:
         # make line graph (it takes long time, but it is here to make dataset simple)

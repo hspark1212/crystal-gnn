@@ -53,22 +53,12 @@ class SCHNET(BaseModule):
         self.lin_1 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
         self.lin_2 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
         self.shift_softplus = ShiftedSoftplus()
-        self.readout_lin_1 = nn.Linear(
-            self.hidden_dim, self.hidden_dim // 2, bias=True
-        )
+        self.readout_lin_1 = nn.Linear(self.hidden_dim, self.hidden_dim // 2, bias=True)
         self.readout_lin_2 = nn.Linear(
             self.hidden_dim // 2, self.readout_dim, bias=True
         )
 
-    def reset_parameters(self) -> None:
-        """Reset parameters"""
-        self.node_embedding.reset_parameters()
-        self.lin_1.reset_parameters()
-        self.lin_2.reset_parameters()
-        self.readout_lin_1.reset_parameters()
-        self.readout_lin_2.reset_parameters()
-        for interaction_block in self.interaction_blocks:
-            interaction_block.reset_parameters()
+        self.apply(self._init_weights)
 
     def forward(self, data: Union[Data, Batch]) -> torch.Tensor:
         # node embedding
@@ -122,10 +112,6 @@ class InteractionBlock(nn.Module):
         self.shift_softplus = ShiftedSoftplus()
         self.lin = nn.Linear(hidden_dim, hidden_dim, bias=True)
         self.bn = nn.BatchNorm1d(hidden_dim)
-
-    def reset_parameters(self) -> None:
-        self.cfconv.reset_parameters()
-        self.lin.reset_parameters()
 
     def forward(
         self,
@@ -188,11 +174,6 @@ class CFconv(MessagePassing):
         self.lin_1 = nn.Linear(hidden_dim, hidden_dim, bias=True)
         self.lin_2 = nn.Linear(hidden_dim, hidden_dim, bias=True)
         self.bn = nn.BatchNorm1d(hidden_dim)
-
-    def reset_parameters(self) -> None:
-        self.mlp.reset_parameters()
-        self.lin_1.reset_parameters()
-        self.lin_2.reset_parameters()
 
     def forward(
         self,

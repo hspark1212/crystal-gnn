@@ -153,11 +153,11 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
     # TODO: deprecated
     def _init_weights(self, module: torch.nn.Module) -> None:
         if isinstance(module, nn.Linear):
-            module.weight.data.normal_(mean=0.0, std=0.02)
+            module.weight.data.normal_(mean=0.0, std=1.0)
             if module.bias is not None:
                 module.bias.data.zero_()
         elif isinstance(module, nn.Embedding):
-            module.weight.data.normal_(mean=0.0, std=0.02)
+            module.weight.data.normal_(mean=0.0, std=1.0)
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
         elif isinstance(module, nn.LayerNorm):

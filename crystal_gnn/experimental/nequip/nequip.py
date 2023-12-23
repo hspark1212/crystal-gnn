@@ -255,11 +255,15 @@ class NequIPConvolution(nn.Module):
             irreps_gated=irreps_nonscalars,
         )
 
+        self.reset_parameters()
+
     def reset_parameters(self) -> None:
-        """Initialize weights."""
-        self.lin_1.reset_parameters()
-        self.lin_2.reset_parameters()
-        self.fc.reset_parameters()
+        self.lin_1.weight.data.normal_(mean=0.0, std=1.0)
+        self.tp.weight.data.normal_(mean=0.0, std=1.0)
+        for l in self.fc:
+            l.weight.data.normal_(mean=0.0, std=1.0)  # TODO: std=4 (google-deepmind)
+        self.self_connection.weight.data.normal_(mean=0.0, std=1.0)
+        self.lin_2.weight.data.normal_(mean=0.0, std=1.0)
 
     def forward(
         self,
@@ -417,6 +421,16 @@ class NEQUIP(BaseModule):
             irreps_in=second_to_final_irreps,
             irreps_out=final_irreps,
         )
+
+        self.reset_parameters()
+
+    def reset_parameters(self) -> None:
+        self.lin_1.weight.data.normal_(mean=0.0, std=1.0)
+        self.bassel_basis.reset_parameters()
+        for conv_layer in self.conv_layers:
+            conv_layer.reset_parameters()
+        self.lin_2.weight.data.normal_(mean=0.0, std=1.0)
+        self.lin_3.weight.data.normal_(mean=0.0, std=1.0)
 
     def forward(self, data: Union[Data, Batch]) -> torch.Tensor:
         # calculate relative vectors

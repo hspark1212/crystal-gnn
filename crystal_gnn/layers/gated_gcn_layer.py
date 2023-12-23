@@ -40,6 +40,17 @@ class GatedGCNLayer(MessagePassing):
         self.bn_node_h = nn.BatchNorm1d(output_dim)
         self.bn_node_e = nn.BatchNorm1d(output_dim)
 
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        self.A.reset_parameters()
+        self.B.reset_parameters()
+        self.C.reset_parameters()
+        self.D.reset_parameters()
+        self.E.reset_parameters()
+        self.bn_node_h.reset_parameters()
+        self.bn_node_e.reset_parameters()
+
     def forward(
         self,
         node_feats: torch.Tensor,

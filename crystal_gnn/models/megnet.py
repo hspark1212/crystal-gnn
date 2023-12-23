@@ -63,14 +63,7 @@ class MEGNET(BaseModule):
         self.nonlinear = ShiftedSoftplus()
         self.readout = MLPReadout(self.hidden_dim * 5, self.readout_dim, bias=True)
 
-    def reset_parameters(self) -> None:
-        """Reset parameters"""
-        self.node_embedding.reset_parameters()
-        self.edge_embedding.reset_parameters()
-        self.global_embedding.reset_parameters()
-        for megnet_block in self.megnet_blocks:
-            megnet_block.reset_parameters()
-        self.readout.reset_parameters()
+        self.apply(self._init_weights)
 
     def forward(self, data: Union[Data, Batch]) -> torch.Tensor:
         # node embedding
@@ -159,20 +152,6 @@ class MEBNETBlock(nn.Module):
         self.bn_edge = nn.BatchNorm1d(hidden_dim)
         self.bn_global = nn.BatchNorm1d(hidden_dim)
 
-    def reset_parameters(self) -> None:
-        self.lin_node_1.reset_parameters()
-        self.lin_edge_1.reset_parameters()
-        self.lin_global_1.reset_parameters()
-        self.fn_edge_update.reset_parameters()
-        self.fn_node_update.reset_parameters()
-        self.fn_global_model.reset_parameters()
-        self.lin_node_2.reset_parameters()
-        self.lin_edge_2.reset_parameters()
-        self.lin_global_2.reset_parameters()
-        self.bn_node.reset_parameters()
-        self.bn_edge.reset_parameters()
-        self.bn_global.reset_parameters()
-
     def forward(
         self,
         node_feats: Tensor,
@@ -237,9 +216,6 @@ class EdgeModel(nn.Module):
             ShiftedSoftplus(),
         )
 
-    def reset_parameters(self) -> None:
-        self.mlp.reset_parameters()
-
     def forward(
         self,
         node_feats: Tensor,
@@ -280,9 +256,6 @@ class NodeModel(nn.Module):
             ShiftedSoftplus(),
         )
 
-    def reset_parameters(self) -> None:
-        self.mlp.reset_parameters()
-
     def forward(
         self,
         node_feats: Tensor,
@@ -316,9 +289,6 @@ class GlobalModel(nn.Module):
             ),
             ShiftedSoftplus(),
         )
-
-    def reset_parameters(self) -> None:
-        self.mlp.reset_parameters()
 
     def forward(
         self,
