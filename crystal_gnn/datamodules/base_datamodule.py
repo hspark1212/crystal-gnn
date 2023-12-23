@@ -103,6 +103,7 @@ class BaseDataModule(LightningDataModule):
                 cutoff=self.cutoff,
                 self_interaction=False,
             )
+            """
             if self.max_neighbors is not None:
                 new_edge_src = []
                 new_edge_dst = []
@@ -119,7 +120,7 @@ class BaseDataModule(LightningDataModule):
                 edge_shift = np.array(new_edge_shift)
                 if len(edge_src) == 0:
                     edge_shift = np.empty((0, 3))
-
+            """
             pos = torch.tensor(atoms.get_positions()).float()
             lattice = torch.tensor(atoms.cell.array).unsqueeze(0).float()
             edge_shift = torch.tensor(edge_shift).float()

@@ -24,8 +24,8 @@ class MLPReadout(nn.Module):
         input_dim: int,
         output_dim: int,
         L: int = 2,
-        bias: bool = False,
-        nonlinear: str = "silu",
+        bias: bool = True,
+        nonlinear: str = "relu",
     ):  # L=nb_hidden_layers
         super().__init__()
         list_FC_layers = [

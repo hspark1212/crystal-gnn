@@ -51,8 +51,8 @@ class CGCNN(BaseModule):
             ]
         )
         self.avg_pool = global_mean_pool
-        self.lin = nn.Linear(self.hidden_dim, self.hidden_dim, bias=False)
-        self.readout = MLPReadout(self.hidden_dim, self.readout_dim, bias=False)
+        self.lin = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
+        self.readout = MLPReadout(self.hidden_dim, self.readout_dim, bias=True)
 
     def reset_parameters(self) -> None:
         """Reset parameters"""
@@ -95,7 +95,7 @@ class CGCNNlayer(MessagePassing):
         self.dropout = dropout
 
         z_dim = hidden_dim * 2 + edge_feat_dim
-        self.lin = nn.Linear(z_dim, 2 * hidden_dim, bias=False)
+        self.lin = nn.Linear(z_dim, 2 * hidden_dim, bias=True)
         self.bn = nn.BatchNorm1d(hidden_dim)
 
     def reset_parameters(self) -> None:
@@ -124,7 +124,7 @@ class CGCNNlayer(MessagePassing):
 
     def message(self, h_i: Tensor, h_j: Tensor, edge_feats: Tensor) -> Tensor:
         z = torch.cat([h_i, h_j, edge_feats], dim=1).to(h_i.dtype)  # [B_e, 2H+D]
-        z = self.lin(z)  # [B_e, 2H]
+        z = self.lin(z)  # [B_e, 2H]      
         nbr_filter, nbr_core = torch.chunk(z, 2, dim=1)  # [B_e, H]
         nbr_filter = torch.sigmoid(nbr_filter)  # [B_e, H]
         nbr_core = fn_softplus(nbr_core)  # [B_e, H]
@@ -133,8 +133,9 @@ class CGCNNlayer(MessagePassing):
     def update(self, aggr_out: Tensor, h: Tensor) -> Tensor:
         # batch norm
         if self.batch_norm:
-            aggr_out = self.bn(aggr_out)  # [B_n, H]
+            aggr_out = self.bn(aggr_out)  # [B_n, H]       
         # residual connection
         if self.residual:
             aggr_out = aggr_out + h
+        # aggr_out = fn_softplus(aggr_out)
         return aggr_out  # [B_n, H]

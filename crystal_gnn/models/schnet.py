@@ -50,14 +50,14 @@ class SCHNET(BaseModule):
             ]
         )
         self.sum_pool = global_add_pool
-        self.lin_1 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=False)
-        self.lin_2 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=False)
+        self.lin_1 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
+        self.lin_2 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
         self.shift_softplus = ShiftedSoftplus()
         self.readout_lin_1 = nn.Linear(
-            self.hidden_dim, self.hidden_dim // 2, bias=False
+            self.hidden_dim, self.hidden_dim // 2, bias=True
         )
         self.readout_lin_2 = nn.Linear(
-            self.hidden_dim // 2, self.readout_dim, bias=False
+            self.hidden_dim // 2, self.readout_dim, bias=True
         )
 
     def reset_parameters(self) -> None:
@@ -120,7 +120,7 @@ class InteractionBlock(nn.Module):
             dropout,
         )
         self.shift_softplus = ShiftedSoftplus()
-        self.lin = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.lin = nn.Linear(hidden_dim, hidden_dim, bias=True)
         self.bn = nn.BatchNorm1d(hidden_dim)
 
     def reset_parameters(self) -> None:
@@ -185,8 +185,8 @@ class CFconv(MessagePassing):
             ShiftedSoftplus(),
             nn.Linear(hidden_dim, hidden_dim),
         )
-        self.lin_1 = nn.Linear(hidden_dim, hidden_dim, bias=False)
-        self.lin_2 = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.lin_1 = nn.Linear(hidden_dim, hidden_dim, bias=True)
+        self.lin_2 = nn.Linear(hidden_dim, hidden_dim, bias=True)
         self.bn = nn.BatchNorm1d(hidden_dim)
 
     def reset_parameters(self) -> None:

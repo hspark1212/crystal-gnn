@@ -23,8 +23,8 @@ def config():
     train_ratio = 0.8
     val_ratio = 0.1
     test_ratio = 0.1
-    cutoff = 8.0
-    max_neighbors = 12  # None or int
+    cutoff = 5.0
+    max_neighbors = None  # None or int TODO:
 
     # dataloader
     batch_size = 64
@@ -42,10 +42,10 @@ def config():
     num_classes = 1  # if higher than 1, classification mode is activated
 
     # optimizer
-    optimizer = "adam"  # "adma", "sgd", "adamw"
+    optimizer = "adamw"  # "adma", "sgd", "adamw"
     lr = 1e-3  # learning rate
     weight_decay = 1e-5
-    scheduler = "constant_with_warmup"  # "constant", "cosine", "reduce_on_plateau", "constant_with_warmup"
+    scheduler = "reduce_on_plateau"  # "constant", "cosine", "reduce_on_plateau", "constant_with_warmup"
 
     # training
     devices = 1  # number of GPUs to use
