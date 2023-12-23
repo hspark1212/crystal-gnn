@@ -160,8 +160,8 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
         elif isinstance(module, nn.BatchNorm1d):
-            module.weight.data.fill_(1)
             module.bias.data.zero_()
+            module.weight.data.fill_(1)
 
     def _calculate_loss(
         self, logits: torch.Tensor, target: torch.Tensor
