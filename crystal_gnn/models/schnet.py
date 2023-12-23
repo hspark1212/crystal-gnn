@@ -7,7 +7,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import MessagePassing, global_mean_pool
 from torch_geometric.data import Data, Batch
-from torch_geometric.nn.models.schnet import InteractionBlock
 
 from crystal_gnn.models.base_module import BaseModule
 from crystal_gnn.models.module_utils import RBFExpansion, ShiftedSoftplus
@@ -41,9 +40,11 @@ class SCHNET(BaseModule):
         self.interaction_blocks = nn.ModuleList(
             [
                 InteractionBlock(
-                    hidden_channels=self.hidden_dim,
-                    num_gaussians=self.rbf_distance_dim,
-                    num_filters=self.hidden_dim,
+                    hidden_dim=self.hidden_dim,
+                    edge_feat_dim=self.rbf_distance_dim,
+                    batch_norm=self.batch_norm,
+                    residual=self.residual,
+                    dropout=self.dropout,
                     cutoff=self.cutoff,
                 )
                 for _ in range(self.num_conv)
@@ -55,7 +56,7 @@ class SCHNET(BaseModule):
         self.shift_softplus = ShiftedSoftplus()
         self.readout = MLPReadout(self.hidden_dim, self.readout_dim, bias=True)
 
-        # self.apply(self._init_weights)
+        self.apply(self._init_weights)
 
     def forward(self, data: Union[Data, Batch]) -> torch.Tensor:
         # node embedding
@@ -69,9 +70,9 @@ class SCHNET(BaseModule):
         for interaction_block in self.interaction_blocks:
             node_feats = interaction_block(
                 node_feats,
-                data.edge_index,
-                distances,
                 edge_feats,
+                distances,
+                data.edge_index,
             )  # [B_n, H]
             if self.batch_norm:
                 node_feats = self.bn(node_feats)
@@ -87,8 +88,7 @@ class SCHNET(BaseModule):
         return node_feats
 
 
-# TODO: deprecated
-class InteractionBlock_old(nn.Module):
+class InteractionBlock(nn.Module):
     """Interaction block of SchNet."""
 
     def __init__(
