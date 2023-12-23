@@ -490,6 +490,6 @@ class NEQUIP(BaseModule):
             atomic_output,
             data.batch,
             dim=0,
-            reduce="sum",
+            reduce="mean",  # TODO:check pooling original code is sum
         )  # [B, 1]
         return graph_output

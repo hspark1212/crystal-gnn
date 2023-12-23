@@ -5,7 +5,7 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import MessagePassing, global_add_pool
+from torch_geometric.nn import MessagePassing, global_mean_pool
 from torch_geometric.data import Data, Batch
 from torch_geometric.nn.models.schnet import InteractionBlock
 
@@ -48,7 +48,8 @@ class SCHNET(BaseModule):
                 for _ in range(self.num_conv)
             ]
         )
-        self.sum_pool = global_add_pool
+        self.bn = nn.BatchNorm1d(self.hidden_dim)
+        self.sum_pool = global_mean_pool
         self.lin_1 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
         self.lin_2 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
         self.shift_softplus = ShiftedSoftplus()
@@ -74,14 +75,16 @@ class SCHNET(BaseModule):
                 distances,
                 edge_feats,
             )  # [B_n, H]
+            if self.batch_norm:
+                node_feats = self.bn(node_feats)
             if self.residual:
                 node_feats += node_feats
-        # TODO: add batch norm, dropout
-        node_feats = self.lin_1(node_feats)  # [B, H]
-        node_feats = self.shift_softplus(node_feats)  # [B, H]
-        node_feats = self.lin_2(node_feats)  # [B, H]
+            node_feats = F.dropout(node_feats, p=self.dropout, training=self.training)
+        node_feats = self.lin_1(node_feats)  # [B_n, H]
+        node_feats = self.shift_softplus(node_feats)  # [B_n, H]
+        node_feats = self.lin_2(node_feats)  # [B_n, H]
         # pool
-        node_feats = self.sum_pool(node_feats, data.batch)  # [B, H]
+        node_feats = self.avg_pool(node_feats, data.batch)  # [B, H]
         # readout
         node_feats = self.readout_lin_1(node_feats)  # [B, H//2]
         node_feats = self.shift_softplus(node_feats)  # [B, H//2]
