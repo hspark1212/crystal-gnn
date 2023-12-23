@@ -57,16 +57,7 @@ class SCHNET(BaseModule):
             self.hidden_dim // 2, self.readout_dim, bias=True
         )
 
-        # self.apply(self._init_weights)
-
-    def reset_parameters(self) -> None:
-        self.node_embedding.reset_parameters()
-        for interaction_block in self.interaction_blocks:
-            interaction_block.reset_parameters()
-        self.lin_1.weight.data.normal_(mean=0.0, std=0.1)
-        self.lin_2.weight.data.normal_(mean=0.0, std=0.1)
-        self.readout_lin_1.weight.data.normal_(mean=0.0, std=0.1)
-        self.readout_lin_2.weight.data.normal_(mean=0.0, std=0.1)
+        self.apply(self._init_weights)
 
     def forward(self, data: Union[Data, Batch]) -> torch.Tensor:
         # node embedding

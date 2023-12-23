@@ -258,12 +258,12 @@ class NequIPConvolution(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
-        self.lin_1.weight.data.normal_(mean=0.0, std=1.0)
-        self.tp.weight.data.normal_(mean=0.0, std=1.0)
+        self.lin_1.weight.data.normal_(mean=0.0, std=0.02)
+        self.tp.weight.data.normal_(mean=0.0, std=0.02)
         for l in self.fc:
-            l.weight.data.normal_(mean=0.0, std=1.0)  # TODO: std=4 (google-deepmind)
-        self.self_connection.weight.data.normal_(mean=0.0, std=1.0)
-        self.lin_2.weight.data.normal_(mean=0.0, std=1.0)
+            l.weight.data.normal_(mean=0.0, std=0.02)  # TODO: std=4 (google-deepmind)
+        self.self_connection.weight.data.normal_(mean=0.0, std=0.02)
+        self.lin_2.weight.data.normal_(mean=0.0, std=0.02)
 
     def forward(
         self,
@@ -425,12 +425,12 @@ class NEQUIP(BaseModule):
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
-        self.lin_1.weight.data.normal_(mean=0.0, std=1.0)
+        self.lin_1.weight.data.normal_(mean=0.0, std=0.02)
         self.bassel_basis.reset_parameters()
         for conv_layer in self.conv_layers:
             conv_layer.reset_parameters()
-        self.lin_2.weight.data.normal_(mean=0.0, std=1.0)
-        self.lin_3.weight.data.normal_(mean=0.0, std=1.0)
+        self.lin_2.weight.data.normal_(mean=0.0, std=0.02)
+        self.lin_3.weight.data.normal_(mean=0.0, std=0.02)
 
     def forward(self, data: Union[Data, Batch]) -> torch.Tensor:
         # calculate relative vectors
