@@ -50,8 +50,6 @@ class SCHNET(BaseModule):
         )
         self.bn = nn.BatchNorm1d(self.hidden_dim)
         self.mean_pool = global_mean_pool
-        self.lin_1 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
-        self.lin_2 = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
         self.shift_softplus = ShiftedSoftplus()
         self.readout_lin_1 = nn.Linear(self.hidden_dim, self.hidden_dim // 2, bias=True)
         self.readout_lin_2 = nn.Linear(
@@ -81,9 +79,6 @@ class SCHNET(BaseModule):
             if self.residual:
                 node_feats = node_feats + orig_node_feats
             node_feats = F.dropout(node_feats, p=self.dropout, training=self.training)
-        node_feats = self.lin_1(node_feats)  # [B_n, H]
-        node_feats = self.shift_softplus(node_feats)  # [B_n, H]
-        node_feats = self.lin_2(node_feats)  # [B_n, H]
         # pool
         node_feats = self.mean_pool(node_feats, data.batch)  # [B, H]
         # readout
