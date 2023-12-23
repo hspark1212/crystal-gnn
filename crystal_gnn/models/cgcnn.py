@@ -50,7 +50,7 @@ class CGCNN(BaseModule):
                 for _ in range(self.num_conv)
             ]
         )
-        self.avg_pool = global_mean_pool
+        self.mean_pool = global_mean_pool
         self.lin = nn.Linear(self.hidden_dim, self.hidden_dim, bias=True)
         self.readout = MLPReadout(self.hidden_dim, self.readout_dim, bias=True)
 
@@ -67,7 +67,7 @@ class CGCNN(BaseModule):
         for conv_layer in self.conv_layers:
             node_feats = conv_layer(node_feats, edge_feats, data.edge_index)  # [B_n, H]
         # pooling
-        node_feats = self.avg_pool(node_feats, data.batch)  # [B, H]
+        node_feats = self.mean_pool(node_feats, data.batch)  # [B, H]
         # readout
         node_feats = fn_softplus(self.lin(fn_softplus(node_feats)))  # [B, H]
         node_feats = self.readout(node_feats)  # [B, O]
@@ -126,5 +126,4 @@ class CGCNNlayer(MessagePassing):
         # residual connection
         if self.residual:
             aggr_out = aggr_out + h
-        # aggr_out = fn_softplus(aggr_out)
         return aggr_out  # [B_n, H]
