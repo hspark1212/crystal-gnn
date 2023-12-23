@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import MessagePassing, global_add_pool
 from torch_geometric.data import Data, Batch
+from torch_geometric.nn.models.schnet import InteractionBlock
 
 from crystal_gnn.models.base_module import BaseModule
 from crystal_gnn.models.module_utils import RBFExpansion, ShiftedSoftplus
@@ -39,11 +40,9 @@ class SCHNET(BaseModule):
         self.interaction_blocks = nn.ModuleList(
             [
                 InteractionBlock(
-                    hidden_dim=self.hidden_dim,
-                    edge_feat_dim=self.rbf_distance_dim,
-                    batch_norm=self.batch_norm,
-                    residual=self.residual,
-                    dropout=self.dropout,
+                    hidden_channels=self.hidden_dim,
+                    num_gaussians=self.rbf_distance_dim,
+                    num_filters=self.hidden_dim,
                     cutoff=self.cutoff,
                 )
                 for _ in range(self.num_conv)
@@ -70,8 +69,14 @@ class SCHNET(BaseModule):
         # conv layers
         for interaction_block in self.interaction_blocks:
             node_feats = interaction_block(
-                node_feats, edge_feats, distances, data.edge_index
+                node_feats,
+                data.edge_index,
+                distances,
+                edge_feats,
             )  # [B_n, H]
+            if self.residual:
+                node_feats += node_feats
+        # TODO: add batch norm, dropout
         node_feats = self.lin_1(node_feats)  # [B, H]
         node_feats = self.shift_softplus(node_feats)  # [B, H]
         node_feats = self.lin_2(node_feats)  # [B, H]
@@ -84,7 +89,8 @@ class SCHNET(BaseModule):
         return node_feats
 
 
-class InteractionBlock(nn.Module):
+# TODO: deprecated
+class InteractionBlock_old(nn.Module):
     """Interaction block of SchNet."""
 
     def __init__(
