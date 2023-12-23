@@ -152,11 +152,11 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
 
     def _init_weights(self, module: torch.nn.Module) -> None:
         if isinstance(module, nn.Linear):
-            nn.init.kaiming_normal_(module.weight.data)
+            nn.init.kaiming_uniform_(module.weight.data)
             if module.bias is not None:
                 module.bias.data.zero_()
         elif isinstance(module, nn.Embedding):
-            nn.init.kaiming_normal_(module.weight.data)
+            nn.init.kaiming_uniform_(module.weight.data)
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
         elif isinstance(module, nn.BatchNorm1d):
