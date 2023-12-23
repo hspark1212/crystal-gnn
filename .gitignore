@@ -23,7 +23,7 @@ data/
 *.json
 
 # files
-demo*.ipynb
+!demo*.ipynb
 
 # exceptions
 !benchmark_jarvis.sh
