@@ -150,7 +150,6 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
     def configure_optimizers(self) -> Dict[str, Any]:
         return self._set_configure_optimizers()
 
-    # TODO: deprecated
     def _init_weights(self, module: torch.nn.Module) -> None:
         if isinstance(module, nn.Linear):
             module.weight.data.normal_(mean=0.0, std=1.0)
