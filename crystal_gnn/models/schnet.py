@@ -55,7 +55,7 @@ class SCHNET(BaseModule):
         self.shift_softplus = ShiftedSoftplus()
         self.readout = MLPReadout(self.hidden_dim, self.readout_dim, bias=True)
 
-        # self.apply(self._init_weights)
+        self.apply(self._init_weights)
 
     def forward(self, data: Union[Data, Batch]) -> torch.Tensor:
         # node embedding
