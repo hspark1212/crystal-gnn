@@ -28,3 +28,7 @@ demo*.ipynb
 # exceptions
 !benchmark_jarvis.sh
 !benchmark_matbench.sh
+
+# job
+*qsub*
+*.log

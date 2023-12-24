@@ -8,7 +8,7 @@ alignn_config = {}
 
 @ex.config
 def config():
-    project_name = "crystal-gnn"  # for wandb
+    project_name = "crystal-gnn_test"  # for wandb
     exp_name = "crystal-gnn"
     seed = 0
     test_only = False
