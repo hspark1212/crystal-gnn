@@ -77,6 +77,7 @@ def cgcnn():
 def megnet():
     exp_name = "megnet"
     model_name = "megnet"
+    hidden_dim = 32
 
 
 @ex.named_config
