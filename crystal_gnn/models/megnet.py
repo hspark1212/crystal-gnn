@@ -60,7 +60,6 @@ class MEGNET(BaseModule):
 
         self.set2set_node = Set2Set(self.hidden_dim, processing_steps=3)
         self.set2set_edge = Set2Set(self.hidden_dim, processing_steps=3)
-        self.nonlinear = ShiftedSoftplus()
         self.readout = MLPReadout(self.hidden_dim * 5, self.readout_dim, bias=True)
 
         self.apply(self._init_weights)
@@ -96,7 +95,6 @@ class MEGNET(BaseModule):
         edge_feats = self.set2set_edge(edge_feats, batch[idx_src])  # [B, 2H]
         # concat
         out = torch.cat([node_feats, edge_feats, global_feats], dim=1)  # [B, 5H]
-        out = self.nonlinear(out)  # [B, 5H]
         # readout
         out = self.readout(out)  # [B, H]
         return out
@@ -205,15 +203,13 @@ class EdgeModel(nn.Module):
         n_edge_features: int,
         n_global_features: int,
         block_hidden_dim: int,
+        lin_bias: bool = True,
     ) -> None:
         super().__init__()
-        self.mlp = nn.Sequential(
-            nn.Linear(
-                n_node_features * 2 + n_edge_features + n_global_features,
-                block_hidden_dim,
-                bias=True,
-            ),
-            ShiftedSoftplus(),
+        self.mlp = nn.Linear(
+            n_node_features * 2 + n_edge_features + n_global_features,
+            block_hidden_dim,
+            bias=lin_bias,
         )
 
     def forward(
@@ -245,15 +241,13 @@ class NodeModel(nn.Module):
         n_edge_features: int,
         n_global_features: int,
         block_hidden_dim: int,
+        lin_bias: bool = True,
     ) -> None:
         super().__init__()
-        self.mlp = nn.Sequential(
-            nn.Linear(
-                n_node_features + n_edge_features + n_global_features,
-                block_hidden_dim,
-                bias=True,
-            ),
-            ShiftedSoftplus(),
+        self.mlp = nn.Linear(
+            n_node_features + n_edge_features + n_global_features,
+            block_hidden_dim,
+            bias=lin_bias,
         )
 
     def forward(
@@ -279,15 +273,13 @@ class GlobalModel(nn.Module):
         n_edge_features: int,
         n_global_features: int,
         block_hidden_dim: int,
+        lin_bias: bool = True,
     ) -> None:
         super().__init__()
-        self.mlp = nn.Sequential(
-            nn.Linear(
-                n_node_features + n_edge_features + n_global_features,
-                block_hidden_dim,
-                bias=True,
-            ),
-            ShiftedSoftplus(),
+        self.mlp = nn.Linear(
+            n_node_features + n_edge_features + n_global_features,
+            block_hidden_dim,
+            bias=lin_bias,
         )
 
     def forward(

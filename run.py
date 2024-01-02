@@ -49,6 +49,7 @@ def main(_config):
 
     # set trainer
     trainer = pl.Trainer(
+        num_nodes=_config["num_nodes"],
         devices=_config["devices"],
         accelerator=_config["accelerator"],
         max_epochs=_config["max_epochs"],

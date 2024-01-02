@@ -101,7 +101,7 @@ class BaseDataModule(LightningDataModule):
                 "ijdS",
                 a=atoms,
                 cutoff=self.cutoff,
-                self_interaction=False,
+                self_interaction=True,
             )
 
             if self.max_neighbors is not None:

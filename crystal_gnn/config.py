@@ -34,7 +34,7 @@ def config():
     # model
     model_name = "cgcnn"  # "schnet", "cgcnn", "megnet"
     num_conv = 4
-    hidden_dim = 256
+    hidden_dim = 128
     rbf_distance_dim = 80  # edge feature dimension
     batch_norm = True
     residual = True
@@ -42,12 +42,13 @@ def config():
     num_classes = 1  # if higher than 1, classification mode is activated
 
     # optimizer
-    optimizer = "adamw"  # "adma", "sgd", "adamw"
+    optimizer = "adamw"  # "adam", "sgd", "adamw"
     lr = 1e-3  # learning rate
     weight_decay = 1e-5
     scheduler = "reduce_on_plateau"  # "constant", "cosine", "reduce_on_plateau", "constant_with_warmup"
 
     # training
+    num_nodes = 1  # number of nodes for distributed training
     devices = 1  # number of GPUs to use
     accelerator = "gpu"  # "cpu", "gpu"
     max_epochs = 100
