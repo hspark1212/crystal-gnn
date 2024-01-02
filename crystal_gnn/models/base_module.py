@@ -85,6 +85,7 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
         # calculate loss
         if self.num_classes == 1:
             target = (target - train_mean) / train_std  # encode
+        print(logits, target)
         loss = self._calculate_loss(logits, target)
         if self.num_classes == 1:
             logits = (logits * train_std) + train_mean  # decode
@@ -203,26 +204,27 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
         if self.num_classes == 1:
             self.log(
                 f"{split}/mae",
-                self.mae(logits.squeeze(), target),
+                self.mae(logits, target),
                 on_step=on_step,
                 on_epoch=on_epoch,
                 sync_dist=True,
                 batch_size=self.hparams.batch_size,
             )
-            self.log(
-                f"{split}/r2",
-                self.r2(logits.squeeze(), target),
-                on_step=on_step,
-                on_epoch=on_epoch,
-                sync_dist=True,
-                batch_size=self.hparams.batch_size,
-            )
+            if logits.size(0) > 1:  # r2 score requires at least 2 samples
+                self.log(
+                    f"{split}/r2",
+                    self.r2(logits, target),
+                    on_step=on_step,
+                    on_epoch=on_epoch,
+                    sync_dist=True,
+                    batch_size=self.hparams.batch_size,
+                )
         elif self.num_classes == 2:
             logits = F.sigmoid(logits)
             logits = logits > 0.5
             self.log(
                 f"{split}/accuracy",
-                self.accuracy(logits.squeeze(), target),
+                self.accuracy(logits, target),
                 on_step=on_step,
                 on_epoch=on_epoch,
                 sync_dist=True,
@@ -232,7 +234,7 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
             logits = logits.argmax(dim=1)
             self.log(
                 f"{split}/accuracy",
-                self.accuracy(logits.squeeze(), target),
+                self.accuracy(logits, target),
                 on_step=on_step,
                 on_epoch=on_epoch,
                 sync_dist=True,
