@@ -59,6 +59,9 @@ class ShiftedSoftplus(torch.nn.Module):
         self.shift = torch.log(torch.tensor(2.0)).item()
         self.softplus = nn.Softplus()
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
+
     def forward(self, x: Tensor) -> Tensor:
         return self.softplus(x) - self.shift
 

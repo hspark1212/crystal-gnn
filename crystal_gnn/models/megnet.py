@@ -24,7 +24,6 @@ class MEGNET(BaseModule):
 
     def __init__(self, _config: Dict[str, Any]) -> None:
         super().__init__(_config)
-        # global features are supposed to
         # config
         self.num_conv = _config["num_conv"]
 
@@ -35,21 +34,34 @@ class MEGNET(BaseModule):
         self.residual = _config["residual"]
         self.cutoff = _config["cutoff"]
         self.global_dim = 2
+
         # layers
-        self.node_embedding = nn.Embedding(103, self.hidden_dim)
+        self.nonlinear = ShiftedSoftplus()
+        self.node_embedding = nn.Sequential(
+            nn.Embedding(103, self.hidden_dim * 2),
+            self.nonlinear,
+            nn.Linear(self.hidden_dim * 2, self.hidden_dim, bias=True),
+            self.nonlinear,
+        )
         self.rbf_expansion = RBFExpansion(
             vmin=0, vmax=self.cutoff, bins=self.rbf_distance_dim
         )
-        self.edge_embedding = nn.Linear(
-            self.rbf_distance_dim, self.hidden_dim, bias=True
+        self.edge_embedding = nn.Sequential(
+            nn.Linear(self.rbf_distance_dim, self.hidden_dim * 2, bias=True),
+            self.nonlinear,
+            nn.Linear(self.hidden_dim * 2, self.hidden_dim, bias=True),
+            self.nonlinear,
         )
-        self.global_embedding = nn.Linear(self.global_dim, self.hidden_dim, bias=True)
-        # The dimensions of node, edge, and global features are set to hidden_dim // 2.
+        self.global_embedding = nn.Sequential(
+            nn.Linear(self.global_dim, self.hidden_dim * 2, bias=True),
+            self.nonlinear,
+            nn.Linear(self.hidden_dim * 2, self.hidden_dim, bias=True),
+            self.nonlinear,
+        )
         self.megnet_blocks = nn.ModuleList(
             [
                 MEBNETBlock(
                     hidden_dim=self.hidden_dim,
-                    block_hidden_dim=self.hidden_dim // 2,
                     batch_norm=self.batch_norm,
                     residual=self.residual,
                     dropout=self.dropout,
@@ -104,7 +116,6 @@ class MEBNETBlock(nn.Module):
     def __init__(
         self,
         hidden_dim: int,
-        block_hidden_dim: int,
         batch_norm: bool,
         residual: bool,
         dropout: float,
@@ -114,37 +125,45 @@ class MEBNETBlock(nn.Module):
         self.residual = residual
         self.dropout = dropout
 
-        self.n_node_features = block_hidden_dim
-        self.n_edge_features = block_hidden_dim
-        self.n_global_features = block_hidden_dim
-
         self.nonlinear = ShiftedSoftplus()
 
-        self.lin_node_1 = nn.Linear(hidden_dim, block_hidden_dim, bias=True)
-        self.lin_edge_1 = nn.Linear(hidden_dim, block_hidden_dim, bias=True)
-        self.lin_global_1 = nn.Linear(hidden_dim, block_hidden_dim, bias=True)
+        self.lin_node_1 = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim * 2, bias=True),
+            self.nonlinear,
+            nn.Linear(hidden_dim * 2, hidden_dim, bias=True),
+            self.nonlinear,
+        )
+        self.lin_edge_1 = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim * 2, bias=True),
+            self.nonlinear,
+            nn.Linear(hidden_dim * 2, hidden_dim, bias=True),
+            self.nonlinear,
+        )
+        self.lin_global_1 = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim * 2, bias=True),
+            self.nonlinear,
+            nn.Linear(hidden_dim * 2, hidden_dim, bias=True),
+            self.nonlinear,
+        )
 
         self.fn_edge_update = EdgeModel(
-            n_node_features=block_hidden_dim,
-            n_edge_features=block_hidden_dim,
-            n_global_features=block_hidden_dim,
-            block_hidden_dim=block_hidden_dim,
+            n_node_features=hidden_dim,
+            n_edge_features=hidden_dim,
+            n_global_features=hidden_dim,
+            hidden_dim=hidden_dim,
         )
         self.fn_node_update = NodeModel(
-            n_node_features=block_hidden_dim,
-            n_edge_features=block_hidden_dim,
-            n_global_features=block_hidden_dim,
-            block_hidden_dim=block_hidden_dim,
+            n_node_features=hidden_dim,
+            n_edge_features=hidden_dim,
+            n_global_features=hidden_dim,
+            hidden_dim=hidden_dim,
         )
         self.fn_global_model = GlobalModel(
-            n_node_features=block_hidden_dim,
-            n_edge_features=block_hidden_dim,
-            n_global_features=block_hidden_dim,
-            block_hidden_dim=block_hidden_dim,
+            n_node_features=hidden_dim,
+            n_edge_features=hidden_dim,
+            n_global_features=hidden_dim,
+            hidden_dim=hidden_dim,
         )
-        self.lin_node_2 = nn.Linear(block_hidden_dim, hidden_dim, bias=True)
-        self.lin_edge_2 = nn.Linear(block_hidden_dim, hidden_dim, bias=True)
-        self.lin_global_2 = nn.Linear(block_hidden_dim, hidden_dim, bias=True)
 
         self.bn_node = nn.BatchNorm1d(hidden_dim)
         self.bn_edge = nn.BatchNorm1d(hidden_dim)
@@ -176,9 +195,6 @@ class MEBNETBlock(nn.Module):
         global_feats = self.fn_global_model(
             node_feats, edge_feats, global_feats, edge_index, batch
         )  # [B, H_]
-        node_feats = self.nonlinear(self.lin_node_2(node_feats))  # [B_n, H]
-        edge_feats = self.nonlinear(self.lin_edge_2(edge_feats))  # [B_e, H]
-        global_feats = self.nonlinear(self.lin_global_2(global_feats))  # [B, H]
         # batch norm
         if self.batch_norm:
             node_feats = self.bn_node(node_feats)  # [B_n, H]
@@ -202,14 +218,22 @@ class EdgeModel(nn.Module):
         n_node_features: int,
         n_edge_features: int,
         n_global_features: int,
-        block_hidden_dim: int,
+        hidden_dim: int,
         lin_bias: bool = True,
     ) -> None:
         super().__init__()
-        self.mlp = nn.Linear(
-            n_node_features * 2 + n_edge_features + n_global_features,
-            block_hidden_dim,
-            bias=lin_bias,
+        self.nonlinear = ShiftedSoftplus()
+        self.mlp = nn.Sequential(
+            nn.Linear(
+                n_node_features * 2 + n_edge_features + n_global_features,
+                hidden_dim * 2,
+                bias=lin_bias,
+            ),
+            self.nonlinear,
+            nn.Linear(hidden_dim * 2, hidden_dim * 2, bias=lin_bias),
+            self.nonlinear,
+            nn.Linear(hidden_dim * 2, hidden_dim, bias=lin_bias),
+            self.nonlinear,
         )
 
     def forward(
@@ -240,14 +264,22 @@ class NodeModel(nn.Module):
         n_node_features: int,
         n_edge_features: int,
         n_global_features: int,
-        block_hidden_dim: int,
+        hidden_dim: int,
         lin_bias: bool = True,
     ) -> None:
         super().__init__()
-        self.mlp = nn.Linear(
-            n_node_features + n_edge_features + n_global_features,
-            block_hidden_dim,
-            bias=lin_bias,
+        self.nonlinear = ShiftedSoftplus()
+        self.mlp = nn.Sequential(
+            nn.Linear(
+                n_node_features + n_edge_features + n_global_features,
+                hidden_dim * 2,
+                bias=lin_bias,
+            ),
+            self.nonlinear,
+            nn.Linear(hidden_dim * 2, hidden_dim * 2, bias=lin_bias),
+            self.nonlinear,
+            nn.Linear(hidden_dim * 2, hidden_dim, bias=lin_bias),
+            self.nonlinear,
         )
 
     def forward(
@@ -272,14 +304,22 @@ class GlobalModel(nn.Module):
         n_node_features: int,
         n_edge_features: int,
         n_global_features: int,
-        block_hidden_dim: int,
+        hidden_dim: int,
         lin_bias: bool = True,
     ) -> None:
         super().__init__()
-        self.mlp = nn.Linear(
-            n_node_features + n_edge_features + n_global_features,
-            block_hidden_dim,
-            bias=lin_bias,
+        self.nonlinear = ShiftedSoftplus()
+        self.mlp = nn.Sequential(
+            nn.Linear(
+                n_node_features + n_edge_features + n_global_features,
+                hidden_dim * 2,
+                bias=lin_bias,
+            ),
+            self.nonlinear,
+            nn.Linear(hidden_dim * 2, hidden_dim * 2, bias=lin_bias),
+            self.nonlinear,
+            nn.Linear(hidden_dim * 2, hidden_dim, bias=lin_bias),
+            self.nonlinear,
         )
 
     def forward(
