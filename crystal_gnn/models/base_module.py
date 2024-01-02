@@ -42,6 +42,8 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
         # get logits
         logits = self.forward(batch)
         logits = logits.squeeze()
+        if logits.ndim == 0:
+            logits = logits.unsqueeze(0)
         # get target
         target = batch["target"].to(logits.dtype)
         # get train_mean and train_std
@@ -73,6 +75,8 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
         # get logits
         logits = self.forward(batch)
         logits = logits.squeeze()
+        if logits.ndim == 0:
+            logits = logits.unsqueeze(0)
         # get target
         target = batch["target"].to(logits.dtype)
         # get train_mean and train_std
@@ -104,6 +108,8 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
         # get logits
         logits = self.forward(batch)
         logits = logits.squeeze()
+        if logits.ndim == 0:
+            logits = logits.unsqueeze(0)
         # get target
         target = batch["target"].to(logits.dtype)
         # get train_mean and train_std
@@ -134,6 +140,8 @@ class BaseModule(LightningModule, metaclass=ABCMeta):
     ) -> torch.Tensor:
         logits = self.forward(batch)
         logits = logits.squeeze()
+        if logits.ndim == 0:
+            logits = logits.unsqueeze(0)
         # get train_mean and train_std
         train_mean = float(batch["train_mean"][0] if "train_mean" in batch else 0)
         train_std = float(batch["train_std"][0] if "train_std" in batch else 1)
