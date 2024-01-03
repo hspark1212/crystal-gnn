@@ -72,7 +72,12 @@ class MEGNET(BaseModule):
 
         self.set2set_node = Set2Set(self.hidden_dim, processing_steps=3)
         self.set2set_edge = Set2Set(self.hidden_dim, processing_steps=3)
-        self.readout = MLPReadout(self.hidden_dim * 5, self.readout_dim, bias=True)
+        self.readout = MLPReadout(
+            self.hidden_dim * 5,
+            self.readout_dim,
+            bias=True,
+            nonlinear="shifted_softplus",
+        )
 
         self.apply(self._init_weights)
 

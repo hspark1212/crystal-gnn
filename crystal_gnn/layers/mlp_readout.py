@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from crystal_gnn.models.module_utils import ShiftedSoftplus
 
 
 NONLINEAR = {
@@ -11,6 +12,7 @@ NONLINEAR = {
     "sigmoid": torch.sigmoid,
     "leaky_relu": F.leaky_relu,
     "silu": F.silu,
+    "shifted_softplus": ShiftedSoftplus(),
 }
 
 
